@@ -17,10 +17,9 @@ volatile bool errorBufferOverrun = false;
 extern bool measuring;
 
 void timerInterrupt(timer_callback_args_t *p_args) {
-  if (!measuring) return;
-
   uint16_t messwert = analogRead(sensorPin); 
   
+  // --- IMMER BERECHNEN (Für das Live-Display im Idle) ---
   messungsSumme += messwert; 
   messungsZaehler++;
   
@@ -31,12 +30,15 @@ void timerInterrupt(timer_callback_args_t *p_args) {
     neuerWertBereit = true; 
   }
 
+  // --- NUR SPEICHERN, WENN BLUETOOTH-MESSUNG LÄUFT ---
+  if (!measuring) return;
+
   buffers[activeBuffer][bufferIndex] = messwert;
   bufferIndex++;
   
   if (bufferIndex >= CHUNK_SIZE) {
     if (bufferReady[1 - activeBuffer]) {
-      errorBufferOverrun = true; // PC kommt mit dem Auslesen nicht hinterher
+      errorBufferOverrun = true; 
     }
     
     bufferReady[activeBuffer] = true; 

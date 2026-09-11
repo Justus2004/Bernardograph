@@ -6,8 +6,12 @@
 ArduinoLEDMatrix matrix;
 
 bool measuring = false;
+bool continuousMode = false;
+bool waitForButtonRelease = false;
+
 unsigned long targetSeconds = 0;
 unsigned long elapsedMilliseconds = 0;
+float currentMbar = 0.0; 
 
 void initTimer();
 void initBluetooth();
@@ -36,26 +40,46 @@ unsigned long readShiftRegister() {
       val |= (1 << i);
     }
   }
-  return (val == 0) ? 10 : val;
+  return val; 
 }
 
 void loop() {
   BLE.poll(); 
 
-  if (!measuring) {
-    matrix.beginDraw();
-    matrix.background(0, 0, 0);
-    matrix.stroke(0xFFFFFFFF);
-    matrix.point(6, 4); 
-    matrix.endDraw();
+  // 1. Live-Druck berechnen (läuft immer)
+  if (neuerWertBereit) {
+    uint16_t adcDurchschnitt = aktuellerDurchschnitt;
+    neuerWertBereit = false; 
 
+    float spannung = adcDurchschnitt * (VCC_REF / ADC_MAX);
+    currentMbar = SENSOR_MAX_MBAR - ((spannung / SENSOR_MAX_VOLTS) * SENSOR_MAX_MBAR);
+    if (currentMbar < 0) currentMbar = 0;
+  }
+
+  // 2. Taster-Entprellung
+  if (waitForButtonRelease && digitalRead(buttonPin) == HIGH) {
+    delay(50);
+    waitForButtonRelease = false;
+  }
+
+  // 3. Taster-Logik (Start & Stopp für ALLE Modi)
+  if (!waitForButtonRelease && digitalRead(buttonPin) == LOW) {
+    delay(50);
     if (digitalRead(buttonPin) == LOW) {
-      delay(50);
-      if (digitalRead(buttonPin) == LOW) {
+      
+      if (!measuring) {
+        // --- MESSUNG STARTEN ---
         targetSeconds = readShiftRegister();
         
-        sendLog("INFO", "Messphase gestartet (" + String(targetSeconds) + "s)");
-        sendCommand("START:" + String(targetSeconds));
+        if (targetSeconds == 0) {
+          continuousMode = true;
+          sendLog("INFO", "Dauermessung gestartet (Beenden mit Taster)");
+          sendCommand("START:0");
+        } else {
+          continuousMode = false;
+          sendLog("INFO", "Zeit-Messung gestartet (" + String(targetSeconds) + "s)");
+          sendCommand("START:" + String(targetSeconds));
+        }
 
         bufferIndex = 0;
         activeBuffer = 0;
@@ -63,66 +87,118 @@ void loop() {
         bufferReady[1] = false;
         errorBufferOverrun = false; 
         elapsedMilliseconds = 0;
-
         measuring = true; 
-        delay(500); 
+      } 
+      else {
+        // --- MESSUNG MANUELL ABBRECHEN ---
+        measuring = false;
+        sendCommand("END");
+        if (continuousMode) {
+          sendLog("INFO", "Dauermessung manuell beendet.");
+        } else {
+          sendLog("WARN", "Zeit-Messung vorzeitig durch Taster abgebrochen!");
+        }
+      }
+      
+      waitForButtonRelease = true; // Blockiert Mehrfach-Klicks
+    }
+  }
+
+  // 4. Bluetooth Daten senden (nur wenn Messung aktiv)
+  if (measuring) {
+    if (errorBufferOverrun) {
+      sendLog("ERR", "Buffer Overrun! Bluetooth zu langsam.");
+      errorBufferOverrun = false; 
+    }
+
+    for (int i = 0; i < 2; i++) {
+      if (bufferReady[i]) {
+        sendStreamData((uint8_t*)buffers[i], CHUNK_SIZE * sizeof(uint16_t));
+        bufferReady[i] = false;
+        elapsedMilliseconds += (CHUNK_SIZE * 1000UL) / SAMPLE_RATE; 
       }
     }
-    return;
-  }
 
-  if (errorBufferOverrun) {
-    sendLog("ERR", "Buffer Overrun! Bluetooth zu langsam, Daten gingen verloren.");
-    errorBufferOverrun = false; 
-  }
-
-  for (int i = 0; i < 2; i++) {
-    if (bufferReady[i]) {
-      sendStreamData((uint8_t*)buffers[i], CHUNK_SIZE * sizeof(uint16_t));
-      bufferReady[i] = false;
-      elapsedMilliseconds += (CHUNK_SIZE * 1000UL) / SAMPLE_RATE; 
+    // Auto-Stopp für Zeit-Messungen
+    if (!continuousMode && elapsedMilliseconds >= (targetSeconds * 1000UL)) {
+      measuring = false;
+      sendCommand("END");
+      sendLog("INFO", "Messphase erfolgreich beendet.");
     }
   }
 
-  if (elapsedMilliseconds >= (targetSeconds * 1000UL)) {
-    measuring = false;
-    sendCommand("END");
-    sendLog("INFO", "Messphase erfolgreich beendet.");
-    
-    matrix.beginDraw();
-    matrix.background(0, 0, 0);
+  // 5. Display-Update aufrufen
+  updateDisplay();
+}
+
+
+// --- DISPLAY LOGIK ---
+void updateDisplay() {
+  static unsigned long lastDraw = 0;
+  if (millis() - lastDraw < 50) return;
+  lastDraw = millis();
+
+  static bool blinkState = false;
+  static unsigned long lastBlink = 0;
+  if (millis() - lastBlink > 500) {
+    blinkState = !blinkState;
+    lastBlink = millis();
+  }
+
+  matrix.beginDraw();
+  matrix.background(0, 0, 0);
+
+  // --- 1. RAHMEN ZEICHNEN (Blinkend bei aktiver Messung) ---
+  if (measuring && blinkState) {
     matrix.stroke(0xFFFFFFFF);
-    matrix.rect(2, 2, 8, 4);
-    matrix.endDraw();
-    delay(2000);
+    matrix.line(0, 0, 11, 0);  // Oben
+    matrix.line(11, 0, 11, 7); // Rechts
+    matrix.line(11, 7, 0, 7);  // Unten
+    matrix.line(0, 7, 0, 0);   // Links
   }
 
-  if (neuerWertBereit) {
-    uint16_t adcDurchschnitt = aktuellerDurchschnitt;
-    neuerWertBereit = false; 
+  matrix.stroke(0xFFFFFFFF);
 
-    float spannung = adcDurchschnitt * (VCC_REF / ADC_MAX);
-    float mbar = SENSOR_MAX_MBAR - ((spannung / SENSOR_MAX_VOLTS) * SENSOR_MAX_MBAR);
-    
-    // Limits für das Display
-    if (mbar < 0) mbar = 0;
-    if (mbar > SENSOR_MAX_MBAR) mbar = SENSOR_MAX_MBAR;
-
-    int displayValue = (int)mbar;
-    matrix.beginDraw();
-    matrix.background(0, 0, 0); 
-    matrix.stroke(0xFFFFFFFF); 
-
-    if (displayValue >= SENSOR_MAX_MBAR) {
-      matrix.rect(0, 0, 12, 8);
-      matrix.point(5, 2);
+  if (!measuring || continuousMode) {
+    // MODUS: IDLE oder DAUERMESSUNG (Zeigt den Druck)
+    if (currentMbar > 99.0) {
+      // Grosses X
+      matrix.line(0, 0, 11, 7);
+      matrix.line(11, 0, 0, 7);
     } else {
-      matrix.textFont(Font_5x7);
-      matrix.beginText(1, 1, 0xFFFFFF); 
-      if (displayValue < 10) matrix.print(" ");
-      matrix.print(displayValue);
-      matrix.endText(NO_SCROLL); 
+      matrix.textFont(Font_4x6); // Kleinerer Font, damit er in den Rahmen passt
+      // Wenn der Rahmen gezeichnet wird, Text leicht verschieben, damit er nicht überlappt
+      int xOffset = measuring ? 2 : 1; 
+      int yOffset = measuring ? 1 : 1;
+      
+      matrix.beginText(xOffset, yOffset, 0xFFFFFF);
+      int val = (int)currentMbar;
+      if (val < 10) matrix.print(" ");
+      matrix.print(val);
+      matrix.endText(NO_SCROLL);
     }
-    matrix.endDraw();
+    
+  } 
+  else {
+    // MODUS: ZEITMESSUNG (Zeigt den Countdown)
+    long remaining = targetSeconds - (elapsedMilliseconds / 1000);
+    if (remaining < 0) remaining = 0;
+
+    matrix.textFont(Font_4x6); // Kleinerer Font
+    int xOffset = measuring ? 2 : 1;
+    int yOffset = measuring ? 1 : 1;
+
+    matrix.beginText(xOffset, yOffset, 0xFFFFFF);
+    
+    if (remaining > 99) {
+      matrix.print("99"); 
+    } else {
+      if (remaining < 10) matrix.print(" ");
+      matrix.print(remaining);
+    }
+    
+    matrix.endText(NO_SCROLL);
   }
+
+  matrix.endDraw();
 }
