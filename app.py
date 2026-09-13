@@ -37,7 +37,10 @@ class SensorDashboard:
         
         self.setup_ui()
         self.root.after(100, self.process_queue)
-        self.log("Bereit. Klicke auf 'Bluetooth Start' oder 'CSV laden'.\nTipp: Halte 'x' oder 'y' beim Scrollen für gezielten Zoom!")
+        self.log("Bereit. Starte automatische Bluetooth-Verbindung...\nTipp: Halte 'x' oder 'y' beim Scrollen für gezielten Zoom!")
+        
+        # --- NEU: Automatische Verbindung kurz nach dem Start der UI auslösen ---
+        self.root.after(500, self.start_connection)
 
     def setup_ui(self):
         main_paned = tk.PanedWindow(self.root, orient=tk.HORIZONTAL)
@@ -169,7 +172,7 @@ class SensorDashboard:
         if seconds == 0:
             self.lbl_countdown.config(text="⏳ Dauermessung läuft...", fg="#FFA500")
             self.ax.set_title("Live-Dauermessung (Stoppen am Arduino)")
-            self.ax.set_xlim(0, 10) # Startet mit 10 Sekunden Fenster, das später mitwandert
+            self.ax.set_xlim(0, 10) 
         else:
             self.lbl_countdown.config(text=f"⏳ {self.countdown} s verbleiben", fg="#FFA500")
             self.ax.set_title(f"Live-Messung läuft... (Ziel: {seconds} s)")
@@ -205,6 +208,7 @@ class SensorDashboard:
         
         self.live_line.set_data(self.live_x, self.live_y)
         self.canvas.draw_idle()
+
     def stop_live_plot(self):
         self.is_measuring = False
         self.lbl_countdown.config(text="✅ Messung beendet", fg="#4CAF50")
@@ -366,25 +370,21 @@ class SensorDashboard:
         nxw = (xl[1]-xl[0]) * scale_x
         nyh = (yl[1]-yl[0]) * scale_y
         
-        # --- NEU: Zoom-Limit für X-Achse (Nicht tiefer als 0.01 Sekunden / 10 Datenpunkte) ---
         if nxw < 0.01: 
             nxw = 0.01
         
-        # X-Achse berechnen
         if scale_x != 1.0 or nxw == 0.01:
             nxmin = xd - nxw * (1 - (xl[1]-xd)/(xl[1]-xl[0]))
             nxmax = nxmin + nxw
         else:
             nxmin, nxmax = xl[0], xl[1]
             
-        # Y-Achse berechnen
         if scale_y != 1.0:
             nymin = yd - nyh * (1 - (yl[1]-yd)/(yl[1]-yl[0]))
             nymax = nymin + nyh
         else:
             nymin, nymax = yl[0], yl[1]
         
-        # Constraints anwenden
         if nxmin < 0:
             nxmax -= nxmin
             nxmin = 0
