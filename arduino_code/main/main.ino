@@ -26,7 +26,7 @@ void setup() {
 
   pinMode(buttonPin, INPUT_PULLUP);
   for (int i = 0; i < 8; i++) {
-    pinMode(shiftPins[i], INPUT);
+    pinMode(shiftPins[i], INPUT_PULLUP);
   }
 
   initBluetooth();
@@ -45,6 +45,13 @@ unsigned long readShiftRegister() {
 
 void loop() {
   BLE.poll(); 
+
+  // --- NEU: Heartbeat alle 2 Sekunden senden ---
+  static unsigned long lastHeartbeat = 0;
+  if (millis() - lastHeartbeat > 2000) {
+    sendCommand("HB");
+    lastHeartbeat = millis();
+  }
 
   // 1. Live-Druck berechnen (läuft immer)
   if (neuerWertBereit) {
@@ -146,19 +153,25 @@ void updateDisplay() {
   }
 
   matrix.beginDraw();
+  
+  // --- FIX: Buffer explizit mit Schwarz überschreiben ---
   matrix.background(0, 0, 0);
+  matrix.stroke(0);           // Stiftfarbe auf Schwarz setzen
+  matrix.fill(0);             // Füllfarbe auf Schwarz setzen
+  matrix.rect(0, 0, 12, 8);   // Komplettes Display schwarz übermalen
+  // ------------------------------------------------------
 
   // --- 1. RAHMEN ZEICHNEN (Blinkend bei aktiver Messung) ---
   if (measuring && blinkState) {
     matrix.stroke(0xFFFFFFFF);
     matrix.line(0, 0, 11, 0);  // Oben
     matrix.line(11, 0, 11, 7); // Rechts
-    matrix.line(11, 7, 0, 7);  // Unten
-    matrix.line(0, 7, 0, 0);   // Links
+    matrix.line(0, 7, 11, 7);  // Unten (GEFIXT: von 0 nach 11) 
+    matrix.line(0, 0, 0, 7);   // Links (GEFIXT: von 0 nach 7) 
   }
 
-  matrix.stroke(0xFFFFFFFF);
-
+  matrix.stroke(0xFFFFFFFF); 
+  
   if (!measuring || continuousMode) {
     // MODUS: IDLE oder DAUERMESSUNG (Zeigt den Druck)
     if (currentMbar > 99.0) {

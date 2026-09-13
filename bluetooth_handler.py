@@ -1,5 +1,6 @@
 import threading
 import asyncio
+import time
 from bleak import BleakScanner, BleakClient
 from bleak.exc import BleakError
 from config import DEVICE_NAME, STREAM_UUID, CMD_UUID
@@ -61,8 +62,17 @@ class BluetoothHandler:
                     self.log("🟢 Verbunden! Warte auf Tasterdruck...")
                     self.msg_queue.put(("STATUS", ("🟢 Verbunden", "#4CAF50")))
 
+                    last_heartbeat = time.time()
+
                     def handle_cmd(sender, data):
+                        nonlocal last_heartbeat
                         msg = data.decode('utf-8').strip()
+                        
+                        # Heartbeat abfangen
+                        if msg == "HB":
+                            last_heartbeat = time.time()
+                            return
+                            
                         if msg.startswith("INFO:") or msg.startswith("WARN:") or msg.startswith("ERR:"):
                             self.log(f"Arduino: {msg}")
                         elif msg.startswith("START:"):
@@ -86,6 +96,12 @@ class BluetoothHandler:
 
                     while client.is_connected:
                         await asyncio.sleep(1)
+                        
+                        # Timeout-Check für den Heartbeat (5 Sekunden)
+                        if time.time() - last_heartbeat > 5.0:
+                            self.log("ERR: Heartbeat Timeout! Verbindung verloren. Suche neu...")
+                            await client.disconnect()
+                            break
                         
             except BleakError as e:
                 self.log(f"ERR: Bluetooth-Verbindungsfehler: {e}")
