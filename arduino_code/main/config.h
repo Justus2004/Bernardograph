@@ -8,7 +8,7 @@ const int shiftPins[8] = {2, 3, 4, 5, 6, 7, 8, 9}; // NEU: Schalter Pins 2 bis 9
 
 const float VCC_REF = 5.0;              
 const float ADC_MAX = 16383.0;          
-const float SENSOR_MAX_VOLTS = 4.78;    
+const float SENSOR_MAX_VOLTS = 4.717;    
 const float SENSOR_MAX_MBAR = 100.0;    
 const int SAMPLE_RATE = 1000;           
 

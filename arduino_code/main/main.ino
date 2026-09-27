@@ -51,7 +51,7 @@ void loop() {
   if (millis() - lastHeartbeat > 2000) {
     sendCommand("HB");
     lastHeartbeat = millis();
-  }
+  }  
 
   // 1. Live-Druck berechnen (läuft immer)
   if (neuerWertBereit) {
@@ -61,6 +61,10 @@ void loop() {
     float spannung = adcDurchschnitt * (VCC_REF / ADC_MAX);
     currentMbar = SENSOR_MAX_MBAR - ((spannung / SENSOR_MAX_VOLTS) * SENSOR_MAX_MBAR);
     if (currentMbar < 0) currentMbar = 0;
+    
+    Serial.print("Gemessene Spannung: ");
+    Serial.print(spannung, 4); // Die "4" bestimmt die Anzahl der Nachkommastellen
+    Serial.println(" V");
   }
 
   // 2. Taster-Entprellung
@@ -166,50 +170,27 @@ void updateDisplay() {
     matrix.stroke(0xFFFFFFFF);
     matrix.line(0, 0, 11, 0);  // Oben
     matrix.line(11, 0, 11, 7); // Rechts
-    matrix.line(0, 7, 11, 7);  // Unten (GEFIXT: von 0 nach 11) 
-    matrix.line(0, 0, 0, 7);   // Links (GEFIXT: von 0 nach 7) 
+    matrix.line(0, 7, 11, 7);  // Unten 
+    matrix.line(0, 0, 0, 7);   // Links 
   }
 
   matrix.stroke(0xFFFFFFFF); 
   
-  if (!measuring || continuousMode) {
-    // MODUS: IDLE oder DAUERMESSUNG (Zeigt den Druck)
-    if (currentMbar > 99.0) {
-      // Grosses X
-      matrix.line(0, 0, 11, 7);
-      matrix.line(11, 0, 0, 7);
-    } else {
-      matrix.textFont(Font_4x6); // Kleinerer Font, damit er in den Rahmen passt
-      // Wenn der Rahmen gezeichnet wird, Text leicht verschieben, damit er nicht überlappt
-      int xOffset = measuring ? 2 : 1; 
-      int yOffset = measuring ? 1 : 1;
-      
-      matrix.beginText(xOffset, yOffset, 0xFFFFFF);
-      int val = (int)currentMbar;
-      if (val < 10) matrix.print(" ");
-      matrix.print(val);
-      matrix.endText(NO_SCROLL);
-    }
-    
-  } 
-  else {
-    // MODUS: ZEITMESSUNG (Zeigt den Countdown)
-    long remaining = targetSeconds - (elapsedMilliseconds / 1000);
-    if (remaining < 0) remaining = 0;
-
-    matrix.textFont(Font_4x6); // Kleinerer Font
-    int xOffset = measuring ? 2 : 1;
+  // MODUS: IMMER DRUCK ANZEIGEN (Countdown entfernt)
+  if (currentMbar > 99.0) {
+    // Grosses X
+    matrix.line(0, 0, 11, 7);
+    matrix.line(11, 0, 0, 7);
+  } else {
+    matrix.textFont(Font_4x6); // Kleinerer Font, damit er in den Rahmen passt
+    // Wenn der Rahmen gezeichnet wird, Text leicht verschieben, damit er nicht überlappt
+    int xOffset = measuring ? 2 : 1; 
     int yOffset = measuring ? 1 : 1;
-
+    
     matrix.beginText(xOffset, yOffset, 0xFFFFFF);
-    
-    if (remaining > 99) {
-      matrix.print("99"); 
-    } else {
-      if (remaining < 10) matrix.print(" ");
-      matrix.print(remaining);
-    }
-    
+    int val = (int)currentMbar;
+    if (val < 10) matrix.print(" ");
+    matrix.print(val);
     matrix.endText(NO_SCROLL);
   }
 

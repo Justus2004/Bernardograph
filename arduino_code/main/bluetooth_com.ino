@@ -2,7 +2,7 @@
 
 BLEService druckService("181A"); 
 BLECharacteristic streamChar("2A6D", BLERead | BLENotify, 200); 
-BLEStringCharacteristic cmdChar("2A6E", BLERead | BLENotify, 20);
+BLEStringCharacteristic cmdChar("2A6F", BLERead | BLENotify, 20);
 
 void initBluetooth() {
   if (!BLE.begin()) {

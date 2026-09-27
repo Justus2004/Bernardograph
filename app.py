@@ -3,6 +3,8 @@ from tkinter import scrolledtext, messagebox, filedialog
 import queue
 import pandas as pd
 import matplotlib.pyplot as plt
+import os
+import sys
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 from data_processor import DataProcessor
@@ -41,6 +43,29 @@ class SensorDashboard:
         
         # --- NEU: Automatische Verbindung kurz nach dem Start der UI auslösen ---
         self.root.after(500, self.start_connection)
+        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+
+    def on_closing(self):
+        print("Beende Programm hart...")
+        try:
+            if self.is_measuring and self.processor:
+                self.processor.close_session()
+        except:
+            pass # Ignoriere Fehler beim Speichern, erzwinge den Abbruch
+        
+        self.root.destroy()
+        os._exit(0) # Zerstört den kompletten Prozessbaum sofort
+        
+    def on_closing(self):
+            # Falls noch eine Messung läuft, CSV sauber schließen und speichern
+            if self.is_measuring and self.processor:
+                self.processor.close_session()
+            
+            # Fenster zerstören
+            self.root.destroy()
+            
+            # Prozess und alle zugehörigen (Bluetooth-)Threads hart beenden
+            os._exit(0)
 
     def setup_ui(self):
         main_paned = tk.PanedWindow(self.root, orient=tk.HORIZONTAL)
