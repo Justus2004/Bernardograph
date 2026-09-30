@@ -46,7 +46,10 @@ class SensorDashboard:
         
         self.processor = DataProcessor()
         self.ble_handler = BluetoothHandler(self.msg_queue, self.processor)
-        self.updater = AppUpdater(self.root)
+        
+        self.blink_id = None
+        self.blink_state = False
+        self.updater = AppUpdater(self.root, self.update_callback)
         self.plot_events = PlotEventManager(self)
         
         self.datasets = [] 
@@ -90,6 +93,49 @@ class SensorDashboard:
         qh.setLevel(logging.INFO)
         self.logger.addHandler(qh)
 
+    def update_callback(self, state, data):
+        if state == "AVAILABLE":
+            ans = messagebox.askyesno("Update gefunden!", f"Eine neue Version (v{data}) ist verfügbar!\n\nMöchtest du das Update jetzt herunterladen?")
+            if ans:
+                self.updater.start_download()
+        elif state == "DOWNLOADING":
+            self.stop_blinking()
+            self.btn_version.config(text=f"DL: {data}%", bootstyle=INFO)
+        elif state == "READY":
+            self.btn_version.config(text=f"Install v{data}", bootstyle=SUCCESS)
+            ans = messagebox.askyesno("Download abgeschlossen", f"Update v{data} ist bereit!\n\nJetzt installieren und die App neustarten?")
+            if ans:
+                self.updater.install_update()
+            else:
+                self.start_blinking()
+        elif state == "ERROR":
+            self.stop_blinking()
+            self.btn_version.config(text=f"v{APP_VERSION}", bootstyle=SECONDARY)
+            messagebox.showerror("Update Fehler", f"Download fehlgeschlagen:\n{data}")
+
+    def start_blinking(self):
+        if self.blink_id:
+            self.root.after_cancel(self.blink_id)
+        self.blink_state = not self.blink_state
+        style = SUCCESS if self.blink_state else SECONDARY
+        self.btn_version.config(bootstyle=style)
+        self.blink_id = self.root.after(1200, self.start_blinking) 
+        
+    def stop_blinking(self):
+        if self.blink_id:
+            self.root.after_cancel(self.blink_id)
+            self.blink_id = None
+            self.btn_version.config(bootstyle=SECONDARY)
+
+    def handle_version_click(self):
+        # Wenn geklickt wird und ein fertiges Update wartet -> Installieren
+        if self.updater.downloaded_version == self.updater.latest_version and self.updater.latest_version:
+            ans = messagebox.askyesno("Update bereit", f"Update v{self.updater.latest_version} ist bereits heruntergeladen.\nJetzt installieren?")
+            if ans:
+                self.updater.install_update()
+        else:
+            self.updater.check_for_updates(manual=True)
+
     def on_closing(self):
         print("Beende Programm...")
         try:
@@ -115,8 +161,8 @@ class SensorDashboard:
         top_frame = tb.Frame(left_frame, padding=5)
         top_frame.grid(row=0, column=0, sticky="ew")
         
-        self.lbl_version = tb.Label(top_frame, text=f"v{APP_VERSION}", font=("Arial", 10, "bold"), bootstyle=SECONDARY)
-        self.lbl_version.pack(side=LEFT, padx=10)
+        self.btn_version = tb.Button(top_frame, text=f"v{APP_VERSION}", bootstyle=SECONDARY, command=self.handle_version_click)
+        self.btn_version.pack(side=LEFT, padx=10)
 
         self.btn_load = tb.Button(top_frame, text="CSV laden", command=lambda: self.load_csv(append=False), bootstyle=SUCCESS)
         self.btn_load.pack(side=LEFT, padx=3)
@@ -182,15 +228,15 @@ class SensorDashboard:
         self.ent_xmax = tb.Entry(frame_axis_inputs, width=6)
         self.ent_xmax.insert(0, "Auto")
         self.ent_xmax.grid(row=0, column=1, padx=2)
-        self.ent_xmax.bind("<Return>", lambda _: self.update_plot())
+        self.ent_xmax.bind("<Return>", lambda _: self.update_plot(preserve_limits=False))
 
         tb.Label(frame_axis_inputs, text="Y (mbar):").grid(row=0, column=2, padx=2)
         self.ent_ymax = tb.Entry(frame_axis_inputs, width=6)
         self.ent_ymax.insert(0, "105")
         self.ent_ymax.grid(row=0, column=3, padx=2)
-        self.ent_ymax.bind("<Return>", lambda _: self.update_plot())
-        
-        tb.Button(frame_axis_inputs, text="OK", command=self.update_plot, bootstyle=INFO).grid(row=0, column=4, padx=5)
+        self.ent_ymax.bind("<Return>", lambda _: self.update_plot(preserve_limits=False))
+
+        tb.Button(frame_axis_inputs, text="OK", command=lambda: self.update_plot(preserve_limits=False), bootstyle=INFO).grid(row=0, column=4, padx=5)
 
         # 1. Signal-Glättung
         lf_smooth = tb.LabelFrame(right_frame, text="1. Signal-Glättung", padding=8)
@@ -297,7 +343,7 @@ class SensorDashboard:
         self.ent_xmax.insert(0, "Auto")
         self.ent_ymax.delete(0, tk.END)
         self.ent_ymax.insert(0, "105")
-        self.update_plot()
+        self.update_plot(preserve_limits=False)
 
     def process_queue(self):
         while not self.msg_queue.empty():
@@ -430,8 +476,13 @@ class SensorDashboard:
                 self.logger.error(f"Fehler beim Laden: {e}")
                 messagebox.showerror("Ladefehler", f"Fehler: {e}")
                 
-    def update_plot(self):
+    def update_plot(self, preserve_limits=True):
         if not self.datasets or self.is_measuring: return
+        
+        # 1. Aktuellen Zoom speichern
+        old_xlim = self.ax.get_xlim() if preserve_limits else None
+        old_ylim = self.ax.get_ylim() if preserve_limits else None
+
         window = self.smooth_var.get()
         self.ax.clear()
         self.apply_theme_colors()
@@ -498,8 +549,14 @@ class SensorDashboard:
         self.ax.set_title("Messdaten & Live-Analyse", color=text_color)
         self.ax.set_xlabel("Zeit (Sekunden)")
         self.ax.set_ylabel("Druck (mbar)")
-        self.ax.set_xlim(left=0, right=xmax)
-        self.ax.set_ylim(bottom=0, top=ymax)
+        
+        # 2. Achsen wiederherstellen (oder neue setzen, falls gewünscht)
+        if preserve_limits and old_xlim and old_ylim and old_xlim != (0.0, 1.0):
+            self.ax.set_xlim(old_xlim)
+            self.ax.set_ylim(old_ylim)
+        else:
+            self.ax.set_xlim(left=0, right=xmax)
+            self.ax.set_ylim(bottom=0, top=ymax)
         
         self.annot = self.ax.annotate("", xy=(0,0), xytext=(15,15), textcoords="offset points", bbox=dict(boxstyle="round,pad=0.3", fc=bbox_bg, ec=text_color, alpha=0.9), arrowprops=dict(arrowstyle="->", connectionstyle="arc3,rad=0", color=text_color))
         self.annot.get_bbox_patch().set_alpha(0.9)

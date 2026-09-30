@@ -9,9 +9,15 @@ import logging
 from config import APP_VERSION, GITHUB_REPO
 
 class AppUpdater:
-    def __init__(self, root):
+    def __init__(self, root, app_callback):
         self.root = root
         self.logger = logging.getLogger("SensorApp.Updater")
+        self.app_callback = app_callback
+        self.latest_version = None
+        self.download_url = None
+        self.downloaded_version = None
+        self.exe_path = os.path.join(tempfile.gettempdir(), "Drucksensor_Update.exe")
+        self.is_downloading = False
 
     def check_for_updates(self, manual=False):
         def check():
@@ -23,41 +29,59 @@ class AppUpdater:
                 if latest_version and latest_version > APP_VERSION:
                     download_url = next((asset["browser_download_url"] for asset in response.get("assets", []) if asset["name"].endswith(".exe")), None)
                     if download_url:
-                        self.logger.info(f"Update v{latest_version} gefunden. Lade lautlos im Hintergrund...")
-                        self.download_silently(download_url, latest_version)
-                    elif manual: 
-                        messagebox.showinfo("Fehler", "Keine Setup-Datei gefunden.")
-                elif manual: 
+                        self.latest_version = latest_version
+                        self.download_url = download_url
+                        
+                        # Prüfen, ob wir genau dieses (oder ein neueres) Update schon geladen haben
+                        if self.downloaded_version == latest_version and os.path.exists(self.exe_path):
+                            self.root.after(0, lambda: self.app_callback("READY", latest_version))
+                        else:
+                            self.root.after(0, lambda: self.app_callback("AVAILABLE", latest_version))
+                    elif manual:
+                        messagebox.showinfo("Fehler", "Keine Setup-Datei auf GitHub gefunden.")
+                elif manual:
                     messagebox.showinfo("Aktuell", "Du hast bereits die neueste Version!")
             except Exception as e:
                 if manual: messagebox.showerror("Fehler", f"Konnte nicht nach Updates suchen: {e}")
         
         threading.Thread(target=check, daemon=True).start()
 
-    def download_silently(self, download_url, version):
-        try:
-            temp_exe = os.path.join(tempfile.gettempdir(), "Drucksensor_Update.exe")
-            r = requests.get(download_url, stream=True)
-            
-            with open(temp_exe, 'wb') as f:
-                for chunk in r.iter_content(chunk_size=8192):
-                    if chunk: f.write(chunk)
-            
-            self.logger.info("Hintergrund-Download abgeschlossen. Warte auf Bestätigung.")
-            self.root.after(0, lambda: self.prompt_install(version, temp_exe))
-            
-        except Exception as e:
-            self.logger.error(f"Hintergrund-Download fehlgeschlagen: {e}")
-
-    def prompt_install(self, version, exe_path):
-        ans = messagebox.askyesno("Update bereit!", f"Version {version} wurde im Hintergrund fertig heruntergeladen.\n\nMöchtest du die App jetzt kurz neustarten (dauert ca. 3 Sekunden)?")
-        if ans:
-            subprocess.Popen([exe_path, '/SILENT', '/SP-'])
-            os._exit(0)
-        else:
-            self.logger.info("Update-Installation übersprungen. Heruntergeladene Datei wird gelöscht.")
+    def start_download(self):
+        if self.is_downloading or not self.download_url: return
+        self.is_downloading = True
+        self.app_callback("DOWNLOADING", 0)
+        
+        def download_task():
             try:
-                if os.path.exists(exe_path):
-                    os.remove(exe_path)
+                r = requests.get(self.download_url, stream=True)
+                total_length = r.headers.get('content-length')
+                
+                with open(self.exe_path, 'wb') as f:
+                    if total_length is None:
+                        f.write(r.content)
+                        self.root.after(0, lambda: self.app_callback("DOWNLOADING", 100))
+                    else:
+                        dl = 0
+                        total_length = int(total_length)
+                        for chunk in r.iter_content(chunk_size=8192):
+                            if chunk:
+                                dl += len(chunk)
+                                f.write(chunk)
+                                progress = int(100 * dl / total_length)
+                                self.root.after(0, lambda p=progress: self.app_callback("DOWNLOADING", p))
+                
+                self.downloaded_version = self.latest_version
+                self.is_downloading = False
+                self.root.after(0, lambda: self.app_callback("READY", self.latest_version))
+                
             except Exception as e:
-                self.logger.error(f"Konnte temporäre Update-Datei nicht löschen: {e}")
+                self.logger.error(f"Download fehlgeschlagen: {e}")
+                self.is_downloading = False
+                self.root.after(0, lambda: self.app_callback("ERROR", str(e)))
+
+        threading.Thread(target=download_task, daemon=True).start()
+
+    def install_update(self):
+        if os.path.exists(self.exe_path):
+            subprocess.Popen([self.exe_path, '/SILENT', '/SP-'])
+            os._exit(0)
