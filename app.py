@@ -8,6 +8,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import os
 import logging
+import math
 from logging.handlers import RotatingFileHandler
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.widgets import SpanSelector
@@ -18,7 +19,6 @@ from bluetooth_handler import BluetoothHandler
 from updater import AppUpdater
 from plot_events import PlotEventManager
 
-# Custom Logging Handler, um Logs in die UI zu pushen
 class QueueLoggingHandler(logging.Handler):
     def __init__(self, msg_queue):
         super().__init__()
@@ -27,12 +27,19 @@ class QueueLoggingHandler(logging.Handler):
     def emit(self, record):
         self.msg_queue.put(("LOG", self.format(record)))
 
-
 class SensorDashboard:
     def __init__(self, root):
         self.root = root
         self.root.title("Drucksensor Dashboard & Analyse")
         self.root.geometry("1450x850")
+        self.root.minsize(900, 600)
+        
+        # App maximiert im Vollbild starten
+        try:
+            self.root.state('zoomed')
+        except tk.TclError:
+            try: self.root.attributes('-zoomed', True)
+            except: pass
         
         self.msg_queue = queue.Queue()
         self.setup_logging()
@@ -62,6 +69,7 @@ class SensorDashboard:
         self.threshold_val = None
         
         self.setup_ui()
+        self.apply_theme_colors()
         self.root.after(100, self.process_queue)
         self.logger.info("Bereit. Starte automatische Bluetooth-Verbindung...\nTipp: Halte 'x' oder 'y' beim Scrollen für gezielten Zoom!")
         
@@ -73,19 +81,17 @@ class SensorDashboard:
         self.logger = logging.getLogger("SensorApp")
         self.logger.setLevel(logging.DEBUG)
         
-        # 1. Speichern in Datei
         fh = RotatingFileHandler("app.log", maxBytes=1024*1024, backupCount=3)
         fh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(message)s'))
         self.logger.addHandler(fh)
         
-        # 2. Ausgeben im UI-Fenster
         qh = QueueLoggingHandler(self.msg_queue)
         qh.setFormatter(logging.Formatter('%(levelname)s: %(message)s'))
-        qh.setLevel(logging.INFO) # Nur Info, Warnings, Errors in der UI
+        qh.setLevel(logging.INFO)
         self.logger.addHandler(qh)
 
     def on_closing(self):
-        print("Beende Programm hart...")
+        print("Beende Programm...")
         try:
             if self.is_measuring and self.processor: self.processor.close_session()
         except: pass 
@@ -93,61 +99,59 @@ class SensorDashboard:
         os._exit(0) 
 
     def setup_ui(self):
-        main_paned = tk.PanedWindow(self.root, orient=tk.HORIZONTAL)
+        main_paned = tk.PanedWindow(self.root, orient=tk.HORIZONTAL, sashrelief=tk.RAISED, sashwidth=4)
         main_paned.pack(fill=BOTH, expand=True)
 
         left_frame = tb.Frame(main_paned)
-        main_paned.add(left_frame, minsize=800)
         
-        top_frame = tb.Frame(left_frame, padding=10)
-        top_frame.pack(side=TOP, fill=X)
+        left_frame.rowconfigure(0, weight=0) 
+        left_frame.rowconfigure(1, weight=1) 
+        left_frame.rowconfigure(2, weight=0) 
+        left_frame.columnconfigure(0, weight=1)
         
-        self.btn_connect = tb.Button(top_frame, text="Bluetooth Start", command=self.start_connection, bootstyle=PRIMARY)
-        self.btn_connect.pack(side=LEFT, padx=5)
+        main_paned.add(left_frame, stretch="always")
 
-        self.btn_update = tb.Button(top_frame, text=f"v{APP_VERSION} (Update)", command=lambda: self.updater.check_for_updates(manual=True), bootstyle=INFO)
-        self.btn_update.pack(side=RIGHT, padx=5)
+        # 1. BAR OBEN
+        top_frame = tb.Frame(left_frame, padding=5)
+        top_frame.grid(row=0, column=0, sticky="ew")
         
+        self.lbl_version = tb.Label(top_frame, text=f"v{APP_VERSION}", font=("Arial", 10, "bold"), bootstyle=SECONDARY)
+        self.lbl_version.pack(side=LEFT, padx=10)
+
         self.btn_load = tb.Button(top_frame, text="CSV laden", command=lambda: self.load_csv(append=False), bootstyle=SUCCESS)
-        self.btn_load.pack(side=LEFT, padx=5)
+        self.btn_load.pack(side=LEFT, padx=3)
 
         self.btn_add = tb.Button(top_frame, text="+ CSV hinzufügen", command=lambda: self.load_csv(append=True), bootstyle=(SUCCESS, OUTLINE))
-        self.btn_add.pack(side=LEFT, padx=5)
+        self.btn_add.pack(side=LEFT, padx=3)
         
         self.btn_reset = tb.Button(top_frame, text="Reset Ansicht", command=self.reset_view, bootstyle=SECONDARY)
-        self.btn_reset.pack(side=LEFT, padx=5)
-        
-        # Einstellungs-Button für Kalibrierung
-        self.btn_settings = tb.Button(top_frame, text="⚙️ Einstellungen", command=self.open_settings, bootstyle=WARNING)
-        self.btn_settings.pack(side=LEFT, padx=5)
-        
-        tb.Label(top_frame, text="Y-Max:", font=("Arial", 10, "bold")).pack(side=LEFT, padx=(15, 2))
-        self.ent_ymax = tb.Entry(top_frame, width=5)
-        self.ent_ymax.insert(0, "105")
-        self.ent_ymax.pack(side=LEFT, padx=2)
-        self.ent_ymax.bind("<Return>", lambda _: self.update_plot())
+        self.btn_reset.pack(side=LEFT, padx=3)
         
         self.lbl_status = tb.Label(top_frame, text="🔴 Getrennt", font=("Arial", 10, "bold"), bootstyle=DANGER)
-        self.lbl_status.pack(side=LEFT, padx=15)
+        self.lbl_status.pack(side=LEFT, padx=10)
         
         self.lbl_countdown = tb.Label(top_frame, text="", font=("Arial", 10, "bold"), bootstyle=WARNING)
-        self.lbl_countdown.pack(side=LEFT, padx=15)
+        self.lbl_countdown.pack(side=LEFT, padx=10)
+
+        # 2. DIAGRAMM MITTE
+        plot_frame = tb.Frame(left_frame)
+        plot_frame.grid(row=1, column=0, sticky="nsew")
         
-        # Matplotlib Figure
-        self.fig, self.ax = plt.subplots(figsize=(10, 4))
-        self.fig.patch.set_facecolor('#222222') # Darkmode anpassung
-        self.ax.set_facecolor('#333333')
-        self.ax.tick_params(colors='white')
-        self.ax.xaxis.label.set_color('white')
-        self.ax.yaxis.label.set_color('white')
-        self.ax.title.set_color('white')
+        self.fig, self.ax = plt.subplots()
+        self.fig.subplots_adjust(left=0.08, right=0.97, top=0.93, bottom=0.12)
         
-        self.canvas = FigureCanvasTkAgg(self.fig, master=left_frame)
-        self.canvas.get_tk_widget().pack(side=TOP, fill=BOTH, expand=True)
+        self.ax.set_title("Messdaten & Live-Analyse")
+        self.ax.set_xlabel("Zeit (Sekunden)")
+        self.ax.set_ylabel("Druck (mbar)")
+        
+        self.ax.set_xlim(0, 10)
+        self.ax.set_ylim(0, 105)
+        
+        self.canvas = FigureCanvasTkAgg(self.fig, master=plot_frame)
+        self.canvas.get_tk_widget().pack(fill=BOTH, expand=True)
         
         self.span = SpanSelector(self.ax, self.on_span_select, 'horizontal', useblit=True, props=dict(alpha=0.25, facecolor='cyan'), interactive=True)
         
-        # Events an die externe Plot-Klasse übergeben
         self.canvas.mpl_connect('scroll_event', self.plot_events.on_zoom)
         self.canvas.mpl_connect('button_press_event', self.plot_events.on_press)
         self.canvas.mpl_connect('button_release_event', self.plot_events.on_release)
@@ -155,26 +159,61 @@ class SensorDashboard:
         self.canvas.mpl_connect('key_press_event', self.plot_events.on_key_press)
         self.canvas.mpl_connect('key_release_event', self.plot_events.on_key_release)
         
-        self.log_text = ScrolledText(left_frame, height=6, bg="#222222", fg="white", font=("Consolas", 10), insertbackground="white")
-        self.log_text.pack(side=BOTTOM, padx=10, pady=5, fill=X)
+        # 3. LOGBUCH UNTEN
+        log_frame = tb.Frame(left_frame)
+        log_frame.grid(row=2, column=0, sticky="nsew", padx=5, pady=5)
+        
+        self.log_text = ScrolledText(log_frame, height=6, font=("Consolas", 9))
+        self.log_text.pack(fill=BOTH, expand=True)
 
+        # RECHTE SEITE (Tools)
         right_frame = tb.Frame(main_paned, padding=10)
-        main_paned.add(right_frame, minsize=350)
+        main_paned.add(right_frame, stretch="never")
         
         tb.Label(right_frame, text="Analyse Werkzeuge", font=("Arial", 14, "bold")).pack(pady=(0, 10))
 
-        lf_smooth = tb.LabelFrame(right_frame, text="1. Signal-Glättung", padding=10)
-        lf_smooth.pack(fill=X, pady=5)
-        self.smooth_var = tb.IntVar(value=1)
-        tb.Scale(lf_smooth, from_=1, to=100, orient=HORIZONTAL, variable=self.smooth_var, command=lambda _: self.update_plot()).pack(fill=X)
+        # ACHSEN-SKALIERUNG
+        lf_axis = tb.LabelFrame(right_frame, text="Achsen Skalierung (Max)", padding=8)
+        lf_axis.pack(fill=X, pady=4)
+        frame_axis_inputs = tb.Frame(lf_axis)
+        frame_axis_inputs.pack(fill=X)
+        
+        tb.Label(frame_axis_inputs, text="X (s):").grid(row=0, column=0, padx=2)
+        self.ent_xmax = tb.Entry(frame_axis_inputs, width=6)
+        self.ent_xmax.insert(0, "Auto")
+        self.ent_xmax.grid(row=0, column=1, padx=2)
+        self.ent_xmax.bind("<Return>", lambda _: self.update_plot())
 
-        lf_peaks = tb.LabelFrame(right_frame, text="2. Automatische Peaks", padding=10)
-        lf_peaks.pack(fill=X, pady=5)
+        tb.Label(frame_axis_inputs, text="Y (mbar):").grid(row=0, column=2, padx=2)
+        self.ent_ymax = tb.Entry(frame_axis_inputs, width=6)
+        self.ent_ymax.insert(0, "105")
+        self.ent_ymax.grid(row=0, column=3, padx=2)
+        self.ent_ymax.bind("<Return>", lambda _: self.update_plot())
+        
+        tb.Button(frame_axis_inputs, text="OK", command=self.update_plot, bootstyle=INFO).grid(row=0, column=4, padx=5)
+
+        # 1. Signal-Glättung
+        lf_smooth = tb.LabelFrame(right_frame, text="1. Signal-Glättung", padding=8)
+        lf_smooth.pack(fill=X, pady=4)
+        
+        frame_smooth_top = tb.Frame(lf_smooth)
+        frame_smooth_top.pack(fill=X)
+        tb.Label(frame_smooth_top, text="Fenstergröße:").pack(side=LEFT)
+        self.lbl_smooth_val = tb.Label(frame_smooth_top, text="1 Werte", font=("Arial", 9, "bold"))
+        self.lbl_smooth_val.pack(side=RIGHT)
+        
+        self.smooth_var = tb.IntVar(value=1)
+        tb.Scale(lf_smooth, from_=1, to=100, orient=HORIZONTAL, variable=self.smooth_var, command=self.on_smooth_change).pack(fill=X, pady=(2,0))
+
+        # 2. Peaks
+        lf_peaks = tb.LabelFrame(right_frame, text="2. Automatische Peaks", padding=8)
+        lf_peaks.pack(fill=X, pady=4)
         self.chk_peaks_var = tb.BooleanVar(value=True)
         tb.Checkbutton(lf_peaks, text="Min/Max Marker anzeigen", variable=self.chk_peaks_var, command=self.update_plot, bootstyle="round-toggle").pack(anchor="w")
 
-        lf_time = tb.LabelFrame(right_frame, text="3. Zeitraum-Analyse (Maus ziehen!)", padding=10)
-        lf_time.pack(fill=X, pady=5)
+        # 3. Zeitraum
+        lf_time = tb.LabelFrame(right_frame, text="3. Zeitraum-Analyse (Maus ziehen!)", padding=8)
+        lf_time.pack(fill=X, pady=4)
         frame_time_inputs = tb.Frame(lf_time)
         frame_time_inputs.pack(fill=X)
         tb.Label(frame_time_inputs, text="Von:").grid(row=0, column=0, padx=2)
@@ -183,90 +222,89 @@ class SensorDashboard:
         tb.Label(frame_time_inputs, text="Bis:").grid(row=0, column=2, padx=2)
         self.ent_end = tb.Entry(frame_time_inputs, width=6)
         self.ent_end.grid(row=0, column=3, padx=2)
-        tb.Button(frame_time_inputs, text="Prüfen", command=self.analyze_slice, bootstyle=INFO).grid(row=0, column=4, padx=5)
+        tb.Button(frame_time_inputs, text="Prüfen", command=self.analyze_slice, bootstyle=INFO).grid(row=0, column=4, padx=2)
         tb.Button(frame_time_inputs, text="X", command=self.clear_slice, bootstyle=DANGER).grid(row=0, column=5)
-        self.lbl_stats = tb.Label(lf_time, text="Kein Bereich gewählt.", justify=LEFT, font=("Consolas", 9))
-        self.lbl_stats.pack(anchor="w", pady=5)
+        
+        self.default_stats = "Schnitt: -- mbar\nMin: -- mbar\nMax: -- mbar\nσ: ±-- mbar\nRate: -- mbar/s"
+        self.lbl_stats = tb.Label(lf_time, text=self.default_stats, justify=LEFT, font=("Consolas", 8))
+        self.lbl_stats.pack(anchor="w", pady=2)
 
-        lf_thresh = tb.LabelFrame(right_frame, text="4. Schwellenwert finden", padding=10)
-        lf_thresh.pack(fill=X, pady=5)
+        # 4. Schwelle
+        lf_thresh = tb.LabelFrame(right_frame, text="4. Schwellenwert finden", padding=8)
+        lf_thresh.pack(fill=X, pady=4)
         frame_thresh_inputs = tb.Frame(lf_thresh)
         frame_thresh_inputs.pack(fill=X)
         tb.Label(frame_thresh_inputs, text="Ziel (mbar):").pack(side=LEFT, padx=2)
         self.ent_thresh = tb.Entry(frame_thresh_inputs, width=8)
         self.ent_thresh.pack(side=LEFT, padx=2)
-        tb.Button(frame_thresh_inputs, text="Suchen", command=self.find_threshold, bootstyle=INFO).pack(side=LEFT, padx=5)
+        tb.Button(frame_thresh_inputs, text="Suchen", command=self.find_threshold, bootstyle=INFO).pack(side=LEFT, padx=2)
         tb.Button(frame_thresh_inputs, text="X", command=self.clear_threshold, bootstyle=DANGER).pack(side=LEFT)
-        self.lbl_thresh_res = tb.Label(lf_thresh, text="", font=("Consolas", 9))
-        self.lbl_thresh_res.pack(anchor="w", pady=5)
+        self.lbl_thresh_res = tb.Label(lf_thresh, text="", font=("Consolas", 8))
+        self.lbl_thresh_res.pack(anchor="w", pady=2)
         
-        lf_export = tb.LabelFrame(right_frame, text="5. Dokumentation & Export", padding=10)
-        lf_export.pack(fill=X, pady=5)
+        # 5. Export
+        lf_export = tb.LabelFrame(right_frame, text="5. Dokumentation & Export", padding=8)
+        lf_export.pack(fill=X, pady=4)
         tb.Label(lf_export, text="Notizen / Bemerkungen:").pack(anchor="w")
-        self.text_notes = tb.Text(lf_export, height=3, width=30, font=("Arial", 9))
+        self.text_notes = tb.Text(lf_export, height=2, width=30, font=("Arial", 9))
         self.text_notes.pack(fill=X, pady=2)
         
-        tb.Button(lf_export, text="Notizen separat speichern", command=self.export_notes, bootstyle=(PRIMARY, OUTLINE)).pack(fill=X, pady=2)
-        tb.Button(lf_export, text="Aktuelle Ansicht als PNG", command=self.export_png, bootstyle=(PRIMARY, OUTLINE)).pack(fill=X, pady=2)
-        tb.Button(lf_export, text="Markierten Bereich als CSV", command=self.export_csv, bootstyle=(PRIMARY, OUTLINE)).pack(fill=X, pady=2)
+        tb.Button(lf_export, text="Notizen speichern", command=self.export_notes, bootstyle=(PRIMARY, OUTLINE)).pack(fill=X, pady=1)
+        tb.Button(lf_export, text="Ansicht als PNG", command=self.export_png, bootstyle=(PRIMARY, OUTLINE)).pack(fill=X, pady=1)
+        tb.Button(lf_export, text="Bereich als CSV", command=self.export_csv, bootstyle=(PRIMARY, OUTLINE)).pack(fill=X, pady=1)
 
-    def open_settings(self):
-        top = tb.Toplevel(self.root)
-        top.title("Kalibrierung")
-        top.geometry("300x250")
-        
-        tb.Label(top, text="ADC Auflösung:").pack(pady=(10, 2))
-        ent_adc = tb.Entry(top)
-        ent_adc.insert(0, str(self.processor.adc_res))
-        ent_adc.pack()
-        
-        tb.Label(top, text="Referenzspannung (V):").pack(pady=(10, 2))
-        ent_ref = tb.Entry(top)
-        ent_ref.insert(0, str(self.processor.ref_volt))
-        ent_ref.pack()
-        
-        tb.Label(top, text="Spannungsteiler:").pack(pady=(10, 2))
-        ent_div = tb.Entry(top)
-        ent_div.insert(0, str(self.processor.volt_div))
-        ent_div.pack()
-        
-        def save():
-            try:
-                self.processor.adc_res = float(ent_adc.get())
-                self.processor.ref_volt = float(ent_ref.get())
-                self.processor.volt_div = float(ent_div.get())
-                self.logger.info("Kalibrierung erfolgreich aktualisiert.")
-                top.destroy()
-            except ValueError:
-                messagebox.showerror("Fehler", "Bitte gültige Zahlen eingeben.")
-                
-        tb.Button(top, text="Speichern", command=save, bootstyle=SUCCESS).pack(pady=20)
+    def on_smooth_change(self, _):
+        val = self.smooth_var.get()
+        self.lbl_smooth_val.config(text=f"{val} Werte")
+        self.update_plot()
 
-    # --- Restliche Methoden bleiben von der Logik her identisch, nur kleine Anpassungen beim Logging ---
-    
+    def apply_theme_colors(self):
+        self.fig.patch.set_facecolor('#ffffff')
+        self.ax.set_facecolor('#f8f9fa')
+        self.ax.tick_params(colors='black')
+        self.ax.xaxis.label.set_color('black')
+        self.ax.yaxis.label.set_color('black')
+        self.ax.title.set_color('black')
+        
+        self.log_text.config(
+            bg="#f0f0f0",
+            fg="black",
+            insertbackground="black"
+        )
+        self.canvas.draw_idle()
+
     def on_span_select(self, xmin, xmax):
-        self.ent_start.delete(0, tb.END)
+        if len(self.datasets) > 1:
+            if hasattr(self, 'span') and self.span:
+                try: self.span.set_visible(False)
+                except: pass
+            messagebox.showwarning("Achtung", "Die Zeitraum-Analyse ist nur bei einem einzelnen Datensatz möglich.")
+            return
+
+        if hasattr(self, 'span') and self.span:
+            try: self.span.set_visible(True)
+            except: pass
+            
+        self.ent_start.delete(0, tk.END)
         self.ent_start.insert(0, f"{xmin:.3f}")
-        self.ent_end.delete(0, tb.END)
+        self.ent_end.delete(0, tk.END)
         self.ent_end.insert(0, f"{xmax:.3f}")
         self.analyze_slice()
 
     def reset_view(self):
         if not self.datasets and not self.is_measuring: return
-        try: ymax = float(self.ent_ymax.get().replace(',', '.'))
-        except: ymax = 105
-        max_time = self.countdown
-        if self.datasets: max_time = max([df['Sekunden'].iloc[-1] for _, df in self.datasets])
-        self.ax.set_xlim(left=0, right=max_time)
-        self.ax.set_ylim(bottom=0, top=ymax)
-        self.canvas.draw_idle()
+        self.ent_xmax.delete(0, tk.END)
+        self.ent_xmax.insert(0, "Auto")
+        self.ent_ymax.delete(0, tk.END)
+        self.ent_ymax.insert(0, "105")
+        self.update_plot()
 
     def process_queue(self):
         while not self.msg_queue.empty():
             msg_type, data = self.msg_queue.get()
             if msg_type == "LOG":
-                self.log_text.insert(tb.END, data + "\n")
-                self.log_text.see(tb.END)
+                self.log_text.insert(tk.END, data + "\n")
+                self.log_text.see(tk.END)
             elif msg_type == "STATUS":
                 self.lbl_status.config(text=data[0], bootstyle=data[1])
             elif msg_type == "START_MEASURE":
@@ -279,7 +317,6 @@ class SensorDashboard:
         self.root.after(100, self.process_queue)
 
     def start_connection(self):
-        self.btn_connect.config(state=DISABLED, text="Bluetooth aktiv")
         self.ble_handler.start()
 
     def start_live_plot(self, seconds):
@@ -288,25 +325,27 @@ class SensorDashboard:
         self.live_x, self.live_y, self.live_index = [], [], 0
         self.datasets = [] 
         self.ax.clear()
+        self.apply_theme_colors()
         self.ax.grid(True, linestyle='--', alpha=0.3)
         
         try: ymax = float(self.ent_ymax.get().replace(',', '.'))
         except: ymax = 105
         
+        self.ax.set_title("Messdaten & Live-Analyse", color='black')
+        
         if seconds == 0:
             self.lbl_countdown.config(text="⏳ Dauermessung läuft...", bootstyle=WARNING)
-            self.ax.set_title("Live-Dauermessung (Stoppen am Arduino)", color="white")
             self.ax.set_xlim(0, 10) 
         else:
             self.lbl_countdown.config(text=f"⏳ {self.countdown} s verbleiben", bootstyle=WARNING)
-            self.ax.set_title(f"Live-Messung läuft... (Ziel: {seconds} s)", color="white")
             self.ax.set_xlim(0, seconds)
             
         self.ax.set_xlabel("Zeit (Sekunden seit Start)")
         self.ax.set_ylabel("Druck (mbar)")
         self.ax.set_ylim(0, ymax)
         
-        self.live_line, = self.ax.plot([], [], color='#00d2ff', linewidth=1.5)
+        line_color = '#0078D7'
+        self.live_line, = self.ax.plot([], [], color=line_color, linewidth=1.5)
         self.canvas.draw_idle()
         if seconds > 0: self.update_countdown()
 
@@ -323,7 +362,6 @@ class SensorDashboard:
         self.live_y.extend(mbar_chunk)
         self.live_index += len(mbar_chunk)
         
-        # --- NEU: Rollierendes Fenster bei zu vielen Datenpunkten ---
         if len(self.live_x) > MAX_LIVE_POINTS:
             self.live_x = self.live_x[-MAX_LIVE_POINTS:]
             self.live_y = self.live_y[-MAX_LIVE_POINTS:]
@@ -346,18 +384,33 @@ class SensorDashboard:
         if filepath:
             if not append: 
                 self.datasets = [] 
-                self.text_notes.delete("1.0", tb.END)
-                self.ent_ymax.delete(0, tb.END)
+                self.text_notes.delete("1.0", tk.END)
+                self.ent_ymax.delete(0, tk.END)
                 self.ent_ymax.insert(0, "105")
+                self.ent_xmax.delete(0, tk.END)
+                self.ent_xmax.insert(0, "Auto")
                 self.clear_slice()
                 self.clear_threshold()
                 self.smooth_var.set(1)
+                self.lbl_smooth_val.config(text="1 Werte")
+            else:
+                self.clear_slice()
                 
             self.current_filepath = filepath
             try:
                 self.logger.info(f"Lade Daten: {os.path.basename(filepath)}")
-                with open(filepath, 'r') as f:
-                    skip = sum(1 for line in f if line.startswith('#'))
+                
+                # CSV einlesen und nach Notizen suchen
+                with open(filepath, 'r', encoding='utf-8') as f:
+                    lines = f.readlines()
+                    
+                notes_lines = [line[1:].strip() if line.startswith('# ') else line.lstrip('#').strip() for line in lines if line.startswith('#')]
+                
+                # Wenn wir eine einzelne Datei laden (nicht anhängen) und sie Notizen hat, füge sie ins Textfeld ein
+                if not append and notes_lines:
+                    self.text_notes.insert(tk.END, '\n'.join(notes_lines))
+                    
+                skip = len(notes_lines)
                         
                 df = pd.read_csv(filepath, sep=';', skiprows=skip)
                 if 'Index' in df.columns:
@@ -381,8 +434,12 @@ class SensorDashboard:
         if not self.datasets or self.is_measuring: return
         window = self.smooth_var.get()
         self.ax.clear()
+        self.apply_theme_colors()
         self.ax.grid(True, linestyle='--', alpha=0.3)
         
+        text_color = 'black'
+        bbox_bg = '#ffffff'
+
         try: ymax = float(self.ent_ymax.get().replace(',', '.'))
         except: ymax = 105
 
@@ -397,41 +454,62 @@ class SensorDashboard:
             
             if self.chk_peaks_var.get():
                 idx_max, idx_min = df['Druck_mbar'].idxmax(), df['Druck_mbar'].idxmin()
-                self.ax.plot(df.loc[idx_max, 'Sekunden'], df.loc[idx_max, 'Druck_mbar'], marker='o', color=color)
-                self.ax.plot(df.loc[idx_min, 'Sekunden'], df.loc[idx_min, 'Druck_mbar'], marker='x', color=color)
+                
+                max_x, max_y = df.loc[idx_max, 'Sekunden'], df.loc[idx_max, 'Druck_mbar']
+                min_x, min_y = df.loc[idx_min, 'Sekunden'], df.loc[idx_min, 'Druck_mbar']
+                
+                self.ax.plot(max_x, max_y, marker='o', markersize=8, markerfacecolor='#FFD700', markeredgecolor='#D32F2F', markeredgewidth=1.5, zorder=5)
+                self.ax.annotate(f"MAX: {max_y:.1f} mbar\n({max_x:.2f} s)", xy=(max_x, max_y), xytext=(0, 12), textcoords="offset points", ha='center', fontsize=8, fontweight='bold', color=text_color, bbox=dict(boxstyle="round,pad=0.2", fc=bbox_bg, ec='#FFD700', alpha=0.85))
+                
+                self.ax.plot(min_x, min_y, marker='D', markersize=7, markerfacecolor='#00FFFF', markeredgecolor='black', markeredgewidth=1.2, zorder=5)
+                self.ax.annotate(f"MIN: {min_y:.1f} mbar\n({min_x:.2f} s)", xy=(min_x, min_y), xytext=(0, -22), textcoords="offset points", ha='center', fontsize=8, fontweight='bold', color=text_color, bbox=dict(boxstyle="round,pad=0.2", fc=bbox_bg, ec='#00FFFF', alpha=0.85))
 
             if self.threshold_val is not None:
                 cross_df = df[df['Druck_mbar'] >= self.threshold_val]
                 if not cross_df.empty:
                     ct, cv = cross_df.iloc[0]['Sekunden'], cross_df.iloc[0]['Druck_mbar']
-                    self.ax.plot(ct, cv, marker='x', color='white', markersize=8)
+                    self.ax.plot(ct, cv, marker='X', color='#FF9800', markersize=10, zorder=6)
                     self.lbl_thresh_res.config(text=f"Schwelle erreicht:\nZeit: {ct:.3f} s\nWert: {cv:.2f} mbar")
 
-        if len(self.datasets) > 1:
+        try:
+            xmax_str = self.ent_xmax.get().strip().replace(',', '.')
+            if xmax_str.lower() in ["auto", ""]: 
+                xmax = math.ceil(max_time) if max_time > 0 else 10
+                self.ent_xmax.delete(0, tk.END)
+                self.ent_xmax.insert(0, str(xmax))
+            else: 
+                xmax = float(xmax_str)
+        except:
+            xmax = math.ceil(max_time) if max_time > 0 else 10
+            self.ent_xmax.delete(0, tk.END)
+            self.ent_xmax.insert(0, str(xmax))
+
+        if len(self.datasets) >= 1:
             legend = self.ax.legend(loc="upper right", fontsize=8)
-            plt.setp(legend.get_texts(), color='black') # Legend text color fix
+            plt.setp(legend.get_texts(), color=text_color)
             
         if self.slice_start is not None and self.slice_end is not None:
-            self.ax.axvspan(self.slice_start, self.slice_end, color='cyan', alpha=0.15)
-            self.ax.axvline(self.slice_start, color='cyan', linestyle='--')
-            self.ax.axvline(self.slice_end, color='cyan', linestyle='--')
-        if self.threshold_val is not None: self.ax.axhline(self.threshold_val, color='orange', linestyle='--')
+            span_color = '#0078D7'
+            self.ax.axvspan(self.slice_start, self.slice_end, color=span_color, alpha=0.18)
+            self.ax.axvline(self.slice_start, color=span_color, linestyle='--')
+            self.ax.axvline(self.slice_end, color=span_color, linestyle='--')
+        if self.threshold_val is not None: self.ax.axhline(self.threshold_val, color='#FF9800', linestyle='--', linewidth=1.5)
 
-        title_str = "Live-Daten" if not self.current_filepath else f"{len(self.datasets)} Messungen geladen"
-        self.ax.set_title(title_str, color='white')
+        self.ax.set_title("Messdaten & Live-Analyse", color=text_color)
         self.ax.set_xlabel("Zeit (Sekunden)")
         self.ax.set_ylabel("Druck (mbar)")
-        self.ax.set_xlim(left=0, right=max_time)
+        self.ax.set_xlim(left=0, right=xmax)
         self.ax.set_ylim(bottom=0, top=ymax)
         
-        self.annot = self.ax.annotate("", xy=(0,0), xytext=(15,15), textcoords="offset points", bbox=dict(boxstyle="round,pad=0.3", fc="#222222", ec="white", alpha=0.9), arrowprops=dict(arrowstyle="->", connectionstyle="arc3,rad=0", color="white"))
+        self.annot = self.ax.annotate("", xy=(0,0), xytext=(15,15), textcoords="offset points", bbox=dict(boxstyle="round,pad=0.3", fc=bbox_bg, ec=text_color, alpha=0.9), arrowprops=dict(arrowstyle="->", connectionstyle="arc3,rad=0", color=text_color))
         self.annot.get_bbox_patch().set_alpha(0.9)
-        self.annot.set_color("white")
+        self.annot.set_color(text_color)
         self.annot.set_visible(False)
         self.canvas.draw_idle()
 
     def analyze_slice(self):
         if not self.datasets or self.is_measuring: return
+        if len(self.datasets) > 1: return
         try:
             s_start = float(self.ent_start.get().replace(',', '.'))
             s_end = float(self.ent_end.get().replace(',', '.'))
@@ -452,9 +530,15 @@ class SensorDashboard:
 
     def clear_slice(self):
         self.slice_start = self.slice_end = None
-        self.ent_start.delete(0, tb.END)
-        self.ent_end.delete(0, tb.END)
-        self.lbl_stats.config(text="Kein Bereich gewählt.")
+        self.ent_start.delete(0, tk.END)
+        self.ent_end.delete(0, tk.END)
+        self.lbl_stats.config(text=self.default_stats)
+        
+        if hasattr(self, 'span') and self.span:
+            self.span.extents = (0, 0)
+            try: self.span.set_visible(False)
+            except: pass
+            
         self.update_plot()
 
     def find_threshold(self):
@@ -466,7 +550,7 @@ class SensorDashboard:
 
     def clear_threshold(self):
         self.threshold_val = None
-        self.ent_thresh.delete(0, tb.END)
+        self.ent_thresh.delete(0, tk.END)
         self.lbl_thresh_res.config(text="")
         self.update_plot()
 
@@ -476,20 +560,38 @@ class SensorDashboard:
             if fp: self.fig.savefig(fp, dpi=300, bbox_inches='tight', facecolor=self.fig.get_facecolor()); self.logger.info(f"Graph gespeichert: {fp}")
 
     def export_notes(self):
-        note = self.text_notes.get("1.0", tb.END).strip()
-        if not note: 
-            return messagebox.showwarning("Fehler", "Das Notizfeld ist leer.")
+        if not self.current_filepath or not os.path.exists(self.current_filepath):
+            return messagebox.showwarning("Fehler", "Es ist keine Messung geladen, zu der Notizen gespeichert werden könnten.")
             
-        fp = filedialog.asksaveasfilename(defaultextension=".txt", filetypes=[("Textdatei", "*.txt")])
-        if fp:
-            with open(fp, 'w', encoding='utf-8') as f:
-                f.write(note)
-            self.logger.info(f"Notizen gespeichert: {fp}")
-            messagebox.showinfo("Erfolg", "Notizen wurden als Textdatei gespeichert.")
+        note = self.text_notes.get("1.0", tk.END).strip()
+        
+        try:
+            # 1. Alte Datei komplett einlesen
+            with open(self.current_filepath, 'r', encoding='utf-8') as f:
+                lines = f.readlines()
+            
+            # 2. Alte Notizen (alles mit # am Anfang) entfernen, um nur die reinen Daten zu behalten
+            data_lines = [line for line in lines if not line.startswith('#')]
+            
+            # 3. Datei neu schreiben: Erst die aktuellen Notizen aus dem Textfeld, dann die Daten
+            with open(self.current_filepath, 'w', encoding='utf-8') as f:
+                if note:
+                    for line in note.split('\n'):
+                        f.write(f"# {line}\n")
+                f.writelines(data_lines)
+                
+            self.logger.info(f"Notizen in CSV aktualisiert: {self.current_filepath}")
+            messagebox.showinfo("Erfolg", f"Notizen wurden direkt in der CSV-Datei gespeichert!\n({os.path.basename(self.current_filepath)})")
+            
+        except Exception as e:
+            self.logger.error(f"Fehler beim Speichern der Notizen in die CSV: {e}")
+            messagebox.showerror("Fehler", f"Konnte Notizen nicht in CSV speichern:\n{e}")
 
     def export_csv(self):
         if not self.datasets: 
             return messagebox.showwarning("Fehler", "Es ist keine Messung geladen.")
+        if len(self.datasets) > 1: 
+            return messagebox.showwarning("Fehler", "CSV Export der Analyse ist nur für einen einzelnen Datensatz möglich.")
         if self.slice_start is None or self.slice_end is None: 
             return messagebox.showwarning("Fehler", "Bitte markiere zuerst einen Bereich im Graphen (Maus ziehen).")
         if self.is_measuring: 
@@ -512,7 +614,7 @@ class SensorDashboard:
             if 'Index' in df_export.columns:
                 df_export['Index'] = range(1, len(df_export) + 1)
             
-            note = self.text_notes.get("1.0", tb.END).strip()
+            note = self.text_notes.get("1.0", tk.END).strip()
             
             with open(fp, 'w', encoding='utf-8', newline='') as f:
                 if note:
@@ -530,8 +632,7 @@ class SensorDashboard:
 if __name__ == "__main__":
     try:
         import ttkbootstrap as tb
-        # Modernes dunkles Theme anwenden (Alternativen: 'superhero', 'cyborg', 'cosmo')
-        root = tb.Window(themename="darkly")
+        root = tb.Window(themename="flatly")
         app = SensorDashboard(root)
         root.mainloop()
     except Exception as e:

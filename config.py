@@ -5,13 +5,8 @@ CMD_UUID = "00002a6f-0000-1000-8000-00805f9b34fb"
 OUTPUT_DIR = "messungen"
 
 # App Konfiguration
-APP_VERSION = "1.1.3"
+APP_VERSION = "1.1.0"
 GITHUB_REPO = "Justus2004/Bernardograph"
-
-# Kalibrierung & Magic Numbers (Standardwerte)
-ADC_RESOLUTION = 16383.0
-REF_VOLTAGE = 5.0
-VOLTAGE_DIVIDER = 4.78
 
 # Performance
 MAX_LIVE_POINTS = 5000  # Für das rollierende Fenster

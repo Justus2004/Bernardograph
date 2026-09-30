@@ -14,6 +14,9 @@ class PlotEventManager:
         try: ymax_limit = float(self.app.ent_ymax.get().replace(',', '.'))
         except: ymax_limit = 105
         
+        try: xmax_limit = float(self.app.ent_xmax.get().replace(',', '.'))
+        except: xmax_limit = 10
+        
         scale = 1/1.2 if event.button == 'up' else 1.2
         scale_x = scale if self.app.current_key == 'x' else (scale if self.app.current_key not in ['x', 'y'] else 1.0)
         scale_y = scale if self.app.current_key == 'y' else (scale if self.app.current_key not in ['x', 'y'] else 1.0)
@@ -36,9 +39,14 @@ class PlotEventManager:
             nymax = nymin + nyh
         else: nymin, nymax = yl[0], yl[1]
         
+        # Blockiere Scrollen aus dem Rahmen
         if nxmin < 0: nxmax -= nxmin; nxmin = 0
-        if nymin < 0: nymax -= nymin; nymin = 0
+        if nxmax > xmax_limit:
+            nxmin -= (nxmax - xmax_limit)
+            nxmax = xmax_limit
+            if nxmin < 0: nxmin = 0
             
+        if nymin < 0: nymax -= nymin; nymin = 0
         if nymax > ymax_limit:
             nymin -= (nymax - ymax_limit)
             nymax = ymax_limit
@@ -67,6 +75,9 @@ class PlotEventManager:
 
         try: ymax_limit = float(self.app.ent_ymax.get().replace(',', '.'))
         except: ymax_limit = 105
+        
+        try: xmax_limit = float(self.app.ent_xmax.get().replace(',', '.'))
+        except: xmax_limit = 10
 
         if self.app.press and self.app.current_key in ['x', 'y']:
             x0, y0, xl, yl = self.app.press
@@ -75,9 +86,14 @@ class PlotEventManager:
             nxmin, nxmax = xl[0]-dx, xl[1]-dx
             nymin, nymax = yl[0]-dy, yl[1]-dy
             
+            # Blockiere Ziehen aus dem Rahmen
             if nxmin < 0: nxmax -= nxmin; nxmin = 0
-            if nymin < 0: nymax -= nymin; nymin = 0
+            if nxmax > xmax_limit:
+                nxmin -= (nxmax - xmax_limit)
+                nxmax = xmax_limit
+                if nxmin < 0: nxmin = 0
             
+            if nymin < 0: nymax -= nymin; nymin = 0
             if nymax > ymax_limit:
                 nymin -= (nymax - ymax_limit)
                 nymax = ymax_limit
@@ -89,7 +105,8 @@ class PlotEventManager:
             return
         
         if self.app.datasets and event.xdata and self.app.annot:
-            _, df = self.app.datasets[-1]
+            _, raw_df = self.app.datasets[-1]
+            df = raw_df.copy() 
             if self.app.smooth_var.get() > 1: df['Druck_mbar'] = df['Druck_mbar'].rolling(window=self.app.smooth_var.get(), center=True).mean()
             row = df.loc[(df['Sekunden'] - event.xdata).abs().idxmin()]
             if abs(row['Sekunden'] - event.xdata) < ((self.app.ax.get_xlim()[1] - self.app.ax.get_xlim()[0]) * 0.05):

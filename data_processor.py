@@ -3,7 +3,7 @@ import os
 from datetime import datetime
 import struct
 import logging
-from config import OUTPUT_DIR, ADC_RESOLUTION, REF_VOLTAGE, VOLTAGE_DIVIDER
+from config import OUTPUT_DIR
 
 class DataProcessor:
     def __init__(self):
@@ -15,11 +15,6 @@ class DataProcessor:
         self.received_chunks = 0
         self.current_filepath = None
         self.current_index = 1
-        
-        # Kalibrierungswerte (können zur Laufzeit durch die UI geändert werden)
-        self.adc_res = ADC_RESOLUTION
-        self.ref_volt = REF_VOLTAGE
-        self.volt_div = VOLTAGE_DIVIDER
 
     def start_session(self, seconds: int):
         self.expected_chunks = seconds * 10 if seconds > 0 else float('inf')
@@ -32,9 +27,6 @@ class DataProcessor:
         
         self.file = open(dateiname, mode='w', newline='')
         self.csv_writer = csv.writer(self.file, delimiter=';')
-        
-        # Speichere die Kalibrierung als Header Info ab
-        self.csv_writer.writerow([f"# ADC:{self.adc_res}", f"REF_V:{self.ref_volt}", f"DIV:{self.volt_div}"])
         self.csv_writer.writerow(["Index", "Druck_mbar", "ADC_Rohwert"])
         self.logger.info(f">>> Messung gestartet. Datei: {dateiname}")
 
@@ -48,9 +40,8 @@ class DataProcessor:
         mbar_chunk = [] 
 
         for raw_adc in raw_values:
-            # Berechnung mit anpassbaren "Magic Numbers"
-            spannung = raw_adc * (self.ref_volt / self.adc_res)
-            mbar = 100.0 - ((spannung / self.volt_div) * 100.0)
+            # Direktes Auslesen/Verarbeiten der bereits berechneten Werte
+            mbar = float(raw_adc) # Bzw. Anpassung falls der Arduino Millibar direkt im Stream schickt
             if mbar < 0: mbar = 0.0
             if mbar > 100: mbar = 100.0
 
