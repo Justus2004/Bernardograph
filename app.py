@@ -17,7 +17,7 @@ from data_processor import DataProcessor
 from bluetooth_handler import BluetoothHandler
 
 # --- NEU: Hier deine Daten eintragen! ---
-APP_VERSION = "1.0.5"
+APP_VERSION = "1.0.6"
 GITHUB_REPO = "Justus2004/Bernardograph" # z.B. "Justus/Drucksensor-App"
 
 class SensorDashboard:

@@ -22,3 +22,6 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 
 [Run]
 Filename: "{app}\app.exe"; Flags: nowait
+
+[UninstallDelete]
+Type: filesandordirs; Name: "{app}"
