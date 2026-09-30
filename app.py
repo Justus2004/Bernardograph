@@ -1,24 +1,17 @@
 import tkinter as tk
-from tkinter import scrolledtext, messagebox, filedialog
+from tkinter import scrolledtext, messagebox, filedialog, ttk
 import queue
 import pandas as pd
 import matplotlib.pyplot as plt
 import os
-import sys
-import requests
-import webbrowser
-import threading
-import tempfile
-import subprocess
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.widgets import SpanSelector
 
+from config import APP_VERSION
 from data_processor import DataProcessor
 from bluetooth_handler import BluetoothHandler
-
-# --- NEU: Hier deine Daten eintragen! ---
-APP_VERSION = "1.0.6"
-GITHUB_REPO = "Justus2004/Bernardograph" # z.B. "Justus/Drucksensor-App"
+from updater import AppUpdater
+from plot_events import PlotEventManager
 
 class SensorDashboard:
     def __init__(self, root):
@@ -30,7 +23,10 @@ class SensorDashboard:
         self.processor = DataProcessor()
         self.ble_handler = BluetoothHandler(self.msg_queue, self.processor)
         
-        # --- NEU: Listen für mehrere Datensätze und Farben ---
+        # --- Modulare Helfer initialisieren ---
+        self.updater = AppUpdater(self.root, self.log)
+        self.plot_events = PlotEventManager(self)
+        
         self.datasets = [] 
         self.colors = ['#D32F2F', '#1976D2', '#388E3C', '#FBC02D', '#8E24AA', '#E64A19', '#0097A7']
         
@@ -55,70 +51,14 @@ class SensorDashboard:
         self.log("Bereit. Starte automatische Bluetooth-Verbindung...\nTipp: Halte 'x' oder 'y' beim Scrollen für gezielten Zoom!")
         
         self.root.after(500, self.start_connection)
-        self.root.after(2000, self.check_for_updates) # Prüft 2 Sekunden nach Start
+        self.root.after(2000, self.updater.check_for_updates) 
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
-        
-    def check_for_updates(self, manual=False):
-        def check():
-            try:
-                url = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
-                response = requests.get(url, timeout=3).json()
-                latest_version = response.get("tag_name", "").replace("v", "")
-                
-                if latest_version and latest_version > APP_VERSION:
-                    # 1. Finde den direkten Download-Link der .exe in den Release-Assets
-                    download_url = None
-                    for asset in response.get("assets", []):
-                        if asset["name"].endswith(".exe"):
-                            download_url = asset["browser_download_url"]
-                            break
-                            
-                    if download_url:
-                        ans = messagebox.askyesno("Update verfügbar!", f"Version {latest_version} ist verfügbar.\n\nSoll das Update jetzt heruntergeladen und automatisch installiert werden?")
-                        if ans:
-                            self.install_update(download_url)
-                    else:
-                        if manual: messagebox.showinfo("Fehler", "Keine Setup-Datei im Release gefunden.")
-                        
-                elif manual:
-                    messagebox.showinfo("Aktuell", "Du hast bereits die neueste Version!")
-            except Exception as e:
-                if manual: messagebox.showerror("Fehler", f"Konnte nicht nach Updates suchen: {e}")
-        
-        threading.Thread(target=check, daemon=True).start()
-
-    def install_update(self, download_url):
-        def download_and_run():
-            try:
-                self.log("INFO: Lade Update herunter. Bitte warten...")
-                
-                # 1. Datei in einen temporären Windows-Ordner laden
-                temp_exe = os.path.join(tempfile.gettempdir(), "Drucksensor_Update.exe")
-                r = requests.get(download_url, stream=True)
-                with open(temp_exe, 'wb') as f:
-                    for chunk in r.iter_content(chunk_size=8192):
-                        f.write(chunk)
-                
-                self.log("INFO: Download fertig. Starte Installation...")
-                
-                # 2. Installer mit "/SILENT" starten (zeigt nur Fortschrittsbalken, keine Klicks nötig)
-                subprocess.Popen([temp_exe, '/SILENT', '/SP-'])
-                
-                # 3. App hart beenden, damit der Installer die Dateien überschreiben kann
-                os._exit(0)
-                
-            except Exception as e:
-                messagebox.showerror("Update-Fehler", f"Fehler beim Installieren: {e}")
-                
-        threading.Thread(target=download_and_run, daemon=True).start()
 
     def on_closing(self):
         print("Beende Programm hart...")
         try:
-            if self.is_measuring and self.processor:
-                self.processor.close_session()
-        except:
-            pass 
+            if self.is_measuring and self.processor: self.processor.close_session()
+        except: pass 
         self.root.destroy()
         os._exit(0) 
 
@@ -135,20 +75,18 @@ class SensorDashboard:
         self.btn_connect = tk.Button(top_frame, text="Bluetooth Start", command=self.start_connection, bg="#0078D7", fg="white", font=("Arial", 10, "bold"))
         self.btn_connect.pack(side=tk.LEFT, padx=5)
 
-        self.btn_update = tk.Button(top_frame, text=f"v{APP_VERSION} (Update Info)", command=lambda: self.check_for_updates(manual=True), bg="#9C27B0", fg="white", font=("Arial", 10, "bold"))
+        self.btn_update = tk.Button(top_frame, text=f"v{APP_VERSION} (Update Info)", command=lambda: self.updater.check_for_updates(manual=True), bg="#9C27B0", fg="white", font=("Arial", 10, "bold"))
         self.btn_update.pack(side=tk.RIGHT, padx=5)
         
         self.btn_load = tk.Button(top_frame, text="CSV laden (Neu)", command=lambda: self.load_csv(append=False), bg="#4CAF50", fg="white", font=("Arial", 10, "bold"))
         self.btn_load.pack(side=tk.LEFT, padx=5)
 
-        # --- NEU: Button für weitere CSVs ---
         self.btn_add = tk.Button(top_frame, text="+ CSV hinzufügen", command=lambda: self.load_csv(append=True), bg="#8BC34A", fg="white", font=("Arial", 10, "bold"))
         self.btn_add.pack(side=tk.LEFT, padx=5)
         
         self.btn_reset = tk.Button(top_frame, text="Reset Ansicht", command=self.reset_view, bg="#607D8B", fg="white", font=("Arial", 10, "bold"))
         self.btn_reset.pack(side=tk.LEFT, padx=5)
         
-        # --- NEU: Y-Achsen Maximum ---
         tk.Label(top_frame, text="Y-Max:", font=("Arial", 10, "bold")).pack(side=tk.LEFT, padx=(15, 2))
         self.ent_ymax = tk.Entry(top_frame, width=5, font=("Arial", 10))
         self.ent_ymax.insert(0, "105")
@@ -165,17 +103,15 @@ class SensorDashboard:
         self.canvas = FigureCanvasTkAgg(self.fig, master=left_frame)
         self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
         
-        # --- NEU: SpanSelector für interaktive Bereichswahl ---
-        self.span = SpanSelector(self.ax, self.on_span_select, 'horizontal', useblit=True,
-                                 props=dict(alpha=0.15, facecolor='blue'), interactive=True)
+        self.span = SpanSelector(self.ax, self.on_span_select, 'horizontal', useblit=True, props=dict(alpha=0.15, facecolor='blue'), interactive=True)
         
-        self.canvas.mpl_connect('scroll_event', self.on_zoom)
-        self.canvas.mpl_connect('button_press_event', self.on_press)
-        self.canvas.mpl_connect('button_release_event', self.on_release)
-        self.canvas.mpl_connect('motion_notify_event', self.on_motion)
-        
-        self.canvas.mpl_connect('key_press_event', self.on_key_press)
-        self.canvas.mpl_connect('key_release_event', self.on_key_release)
+        # --- Events an die externe Plot-Klasse übergeben ---
+        self.canvas.mpl_connect('scroll_event', self.plot_events.on_zoom)
+        self.canvas.mpl_connect('button_press_event', self.plot_events.on_press)
+        self.canvas.mpl_connect('button_release_event', self.plot_events.on_release)
+        self.canvas.mpl_connect('motion_notify_event', self.plot_events.on_motion)
+        self.canvas.mpl_connect('key_press_event', self.plot_events.on_key_press)
+        self.canvas.mpl_connect('key_release_event', self.plot_events.on_key_release)
         
         self.log_text = scrolledtext.ScrolledText(left_frame, height=6, bg="#1e1e1e", fg="#00ff00", font=("Consolas", 10))
         self.log_text.pack(side=tk.BOTTOM, padx=10, pady=5, fill=tk.X)
@@ -223,7 +159,6 @@ class SensorDashboard:
         self.lbl_thresh_res = tk.Label(lf_thresh, text="", bg="#f0f0f0", font=("Consolas", 9))
         self.lbl_thresh_res.pack(anchor="w", pady=5)
         
-        # --- NEU: Notizen & Export ---
         lf_export = tk.LabelFrame(right_frame, text="5. Dokumentation & Export", bg="#f0f0f0", font=("Arial", 10, "bold"), pady=5, padx=5)
         lf_export.pack(fill=tk.X, pady=5)
         tk.Label(lf_export, text="Notizen / Bemerkungen (wird in CSV gespeichert):", bg="#f0f0f0").pack(anchor="w")
@@ -233,7 +168,6 @@ class SensorDashboard:
         tk.Button(lf_export, text="Aktuelle Ansicht als PNG", command=self.export_png, width=25).pack(pady=2)
         tk.Button(lf_export, text="Markierten Bereich als CSV", command=self.export_csv, width=25).pack(pady=2)
 
-    # --- NEU: SpanSelector Callback ---
     def on_span_select(self, xmin, xmax):
         self.ent_start.delete(0, tk.END)
         self.ent_start.insert(0, f"{xmin:.3f}")
@@ -243,21 +177,15 @@ class SensorDashboard:
 
     def reset_view(self):
         if not self.datasets and not self.is_measuring: return
-        try:
-            ymax = float(self.ent_ymax.get().replace(',', '.'))
-        except:
-            ymax = 105
-        
+        try: ymax = float(self.ent_ymax.get().replace(',', '.'))
+        except: ymax = 105
         max_time = self.countdown
-        if self.datasets:
-            max_time = max([df['Sekunden'].iloc[-1] for _, df in self.datasets])
-
+        if self.datasets: max_time = max([df['Sekunden'].iloc[-1] for _, df in self.datasets])
         self.ax.set_xlim(left=0, right=max_time)
         self.ax.set_ylim(bottom=0, top=ymax)
         self.canvas.draw_idle()
 
-    def log(self, msg):
-        self.msg_queue.put(("LOG", msg))
+    def log(self, msg): self.msg_queue.put(("LOG", msg))
 
     def process_queue(self):
         while not self.msg_queue.empty():
@@ -266,8 +194,7 @@ class SensorDashboard:
                 self.log_text.insert(tk.END, data + "\n")
                 self.log_text.see(tk.END)
             elif msg_type == "STATUS":
-                text, color = data
-                self.lbl_status.config(text=text, fg=color)
+                self.lbl_status.config(text=data[0], fg=data[1])
             elif msg_type == "START_MEASURE":
                 self.start_live_plot(data)
             elif msg_type == "LIVE_DATA":
@@ -284,10 +211,8 @@ class SensorDashboard:
     def start_live_plot(self, seconds):
         self.is_measuring = True
         self.countdown = seconds
-        self.live_x = []
-        self.live_y = []
-        self.live_index = 0
-        self.datasets = [] # Live-Modus löscht vorherige Graphen
+        self.live_x, self.live_y, self.live_index = [], [], 0
+        self.datasets = [] 
         self.ax.clear()
         
         try: ymax = float(self.ent_ymax.get().replace(',', '.'))
@@ -309,8 +234,7 @@ class SensorDashboard:
         
         self.live_line, = self.ax.plot([], [], color='#D32F2F', linewidth=1.5)
         self.canvas.draw_idle()
-        if seconds > 0:
-            self.update_countdown()
+        if seconds > 0: self.update_countdown()
 
     def update_countdown(self):
         if self.is_measuring and self.countdown > 0:
@@ -337,58 +261,38 @@ class SensorDashboard:
         self.lbl_countdown.config(text="✅ Messung beendet", fg="#4CAF50")
 
     def load_csv(self, append=False, direct_path=None):
-        if self.is_measuring:
-            messagebox.showwarning("Achtung", "Bitte warte, bis die laufende Messung abgeschlossen ist.")
-            return
-            
-        filepath = direct_path
-        if not filepath:
-            filepath = filedialog.askopenfilename(title="Messdaten auswählen", filetypes=[("CSV Dateien", "*.csv")])
-            
+        if self.is_measuring: return messagebox.showwarning("Achtung", "Bitte warte, bis die laufende Messung abgeschlossen ist.")
+        filepath = direct_path or filedialog.askopenfilename(title="Messdaten auswählen", filetypes=[("CSV Dateien", "*.csv")])
         if filepath:
-            if not append:
-                self.datasets = [] # Vorherige Messungen löschen
-                
+            if not append: self.datasets = [] 
             self.current_filepath = filepath
             try:
                 self.log(f"INFO: Lade Daten: {os.path.basename(filepath)}")
-                
-                # Header-Kommentare überspringen (falls Notizen exportiert wurden)
                 with open(filepath, 'r') as f:
-                    lines = f.readlines()
-                skip = 0
-                for line in lines:
-                    if line.startswith('#'): skip += 1
-                    else: break
+                    skip = sum(1 for line in f if line.startswith('#'))
                         
                 df = pd.read_csv(filepath, sep=';', skiprows=skip)
-                
                 if 'Index' in df.columns:
                     df['Sekunden'] = (df['Index'] - 1) / 1000.0
                 elif 'Sekunden' not in df.columns:
                     erster_wert = str(df['Zeitstempel'].iloc[0])
                     if ':' in erster_wert:
-                        try:
-                            df['Zeit_Objekt'] = pd.to_datetime(df['Zeitstempel'], format='%Y-%m-%d %H:%M:%S.%f')
-                        except ValueError:
-                            df['Zeit_Objekt'] = pd.to_datetime(df['Zeitstempel'], format='%H:%M:%S.%f')
+                        try: df['Zeit_Objekt'] = pd.to_datetime(df['Zeitstempel'], format='%Y-%m-%d %H:%M:%S.%f')
+                        except ValueError: df['Zeit_Objekt'] = pd.to_datetime(df['Zeitstempel'], format='%H:%M:%S.%f')
                         df['Sekunden'] = (df['Zeit_Objekt'] - df['Zeit_Objekt'].iloc[0]).dt.total_seconds()
-                    else:
-                        df['Sekunden'] = (df['Zeitstempel'].astype(float) - 1) / 1000.0
+                    else: df['Sekunden'] = (df['Zeitstempel'].astype(float) - 1) / 1000.0
 
                 self.datasets.append((os.path.basename(filepath), df))
                 self.clear_slice()
                 self.clear_threshold()
                 self.smooth_var.set(1)
                 self.update_plot()
-                
             except Exception as e:
                 self.log(f"ERR: Fehler beim Laden: {e}")
                 messagebox.showerror("Ladefehler", f"Fehler: {e}")
 
     def update_plot(self):
         if not self.datasets or self.is_measuring: return
-        
         window = self.smooth_var.get()
         self.ax.clear()
         
@@ -396,18 +300,13 @@ class SensorDashboard:
         except: ymax = 105
 
         max_time = 0
-        
-        # --- NEU: Iteration über alle geladenen Datensätze ---
         for idx, (name, raw_df) in enumerate(self.datasets):
             df = raw_df.copy()
             color = self.colors[idx % len(self.colors)]
-            
-            if window > 1:
-                df['Druck_mbar'] = df['Druck_mbar'].rolling(window=window, min_periods=1, center=True).mean()
+            if window > 1: df['Druck_mbar'] = df['Druck_mbar'].rolling(window=window, min_periods=1, center=True).mean()
 
             self.ax.plot(df['Sekunden'], df['Druck_mbar'], color=color, linewidth=1.5, label=name)
-            if df['Sekunden'].iloc[-1] > max_time:
-                max_time = df['Sekunden'].iloc[-1]
+            if df['Sekunden'].iloc[-1] > max_time: max_time = df['Sekunden'].iloc[-1]
             
             if self.chk_peaks_var.get():
                 idx_max, idx_min = df['Druck_mbar'].idxmax(), df['Druck_mbar'].idxmin()
@@ -421,16 +320,12 @@ class SensorDashboard:
                     self.ax.plot(ct, cv, marker='x', color='black', markersize=8)
                     self.lbl_thresh_res.config(text=f"Schwelle erreicht:\nZeit: {ct:.3f} s\nWert: {cv:.2f} mbar")
 
-        if len(self.datasets) > 1:
-            self.ax.legend(loc="upper right", fontsize=8)
-
+        if len(self.datasets) > 1: self.ax.legend(loc="upper right", fontsize=8)
         if self.slice_start is not None and self.slice_end is not None:
             self.ax.axvspan(self.slice_start, self.slice_end, color='blue', alpha=0.15)
             self.ax.axvline(self.slice_start, color='blue', linestyle='--')
             self.ax.axvline(self.slice_end, color='blue', linestyle='--')
-
-        if self.threshold_val is not None:
-            self.ax.axhline(self.threshold_val, color='orange', linestyle='--')
+        if self.threshold_val is not None: self.ax.axhline(self.threshold_val, color='orange', linestyle='--')
 
         title_str = "Live-Daten" if not self.current_filepath else f"{len(self.datasets)} Messungen geladen"
         self.ax.set_title(title_str)
@@ -452,8 +347,6 @@ class SensorDashboard:
             if s_start >= s_end: return messagebox.showwarning("Eingabe", "Start muss kleiner als Ende sein.")
                 
             self.slice_start, self.slice_end = s_start, s_end
-            
-            # Analyse wird auf den ZULETZT geladenen Datensatz angewandt
             _, raw_df = self.datasets[-1] 
             df = raw_df.copy()
             if self.smooth_var.get() > 1: df['Druck_mbar'] = df['Druck_mbar'].rolling(window=self.smooth_var.get(), center=True).mean()
@@ -464,8 +357,7 @@ class SensorDashboard:
                 rate = (sliced.iloc[-1]['Druck_mbar'] - sliced.iloc[0]['Druck_mbar']) / tdiff if tdiff > 0 else 0
                 self.lbl_stats.config(text=f"Schnitt: {sliced['Druck_mbar'].mean():.2f} mbar\nMin: {sliced['Druck_mbar'].min():.2f} mbar\nMax: {sliced['Druck_mbar'].max():.2f} mbar\nσ: ±{sliced['Druck_mbar'].std():.2f} mbar\nRate: {rate:.2f} mbar/s")
             self.update_plot()
-        except ValueError:
-            messagebox.showerror("Fehler", "Bitte gültige Zahlen eingeben.")
+        except ValueError: messagebox.showerror("Fehler", "Bitte gültige Zahlen eingeben.")
 
     def clear_slice(self):
         self.slice_start = self.slice_end = None
@@ -479,8 +371,7 @@ class SensorDashboard:
         try:
             self.threshold_val = float(self.ent_thresh.get().replace(',', '.'))
             self.update_plot()
-        except ValueError:
-            messagebox.showerror("Fehler", "Gültige Zahl einfügen.")
+        except ValueError: messagebox.showerror("Fehler", "Gültige Zahl einfügen.")
 
     def clear_threshold(self):
         self.threshold_val = None
@@ -494,131 +385,28 @@ class SensorDashboard:
         if fp: self.fig.savefig(fp, dpi=300, bbox_inches='tight'); self.log(f"Graph gespeichert: {fp}")
 
     def export_csv(self):
-        if not self.datasets or self.slice_start is None or self.is_measuring: return
+        if not self.datasets: return messagebox.showwarning("Fehler", "Es ist keine Messung geladen.")
+        if self.slice_start is None or self.slice_end is None: return messagebox.showwarning("Fehler", "Bitte markiere zuerst einen Bereich im Graphen.")
+        if self.is_measuring: return messagebox.showwarning("Fehler", "Bitte warte, bis die laufende Messung beendet ist.")
+
         fp = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV File", "*.csv")])
-        if fp:
+        if not fp: return
+        try:
             _, df = self.datasets[-1] 
             df_export = df[(df['Sekunden'] >= self.slice_start) & (df['Sekunden'] <= self.slice_end)].copy()
+            if df_export.empty: return messagebox.showwarning("Fehler", "Der markierte Bereich enthält keine Daten!")
             
-            # Setzt den allerersten Zeitstempel des Exports exakt auf 0.0
             start_time = df_export['Sekunden'].iloc[0]
             df_export['Sekunden'] = df_export['Sekunden'] - start_time
-            
             note = self.text_notes.get("1.0", tk.END).strip()
             
             with open(fp, 'w', encoding='utf-8') as f:
                 if note:
-                    for line in note.split('\n'):
-                        f.write(f"# {line}\n")
+                    for line in note.split('\n'): f.write(f"# {line}\n")
                 df_export.to_csv(f, sep=';', index=False, lineterminator='\n')
-                
-            self.log(f"CSV exportiert (Zeit startet bei 0.0s): {fp}")
-
-    def on_key_press(self, event):
-        self.current_key = event.key.lower() if event.key else None
-
-    def on_key_release(self, event):
-        self.current_key = None
-
-    def on_zoom(self, event):
-        if event.inaxes != self.ax or self.is_measuring: return
-        
-        try: ymax_limit = float(self.ent_ymax.get().replace(',', '.'))
-        except: ymax_limit = 105
-        
-        scale = 1/1.2 if event.button == 'up' else 1.2
-        scale_x = scale if self.current_key == 'x' else (scale if self.current_key not in ['x', 'y'] else 1.0)
-        scale_y = scale if self.current_key == 'y' else (scale if self.current_key not in ['x', 'y'] else 1.0)
-        
-        xd, yd = event.xdata, event.ydata
-        xl, yl = self.ax.get_xlim(), self.ax.get_ylim()
-        
-        nxw = (xl[1]-xl[0]) * scale_x
-        nyh = (yl[1]-yl[0]) * scale_y
-        
-        if nxw < 0.01: nxw = 0.01
-        
-        if scale_x != 1.0 or nxw == 0.01:
-            nxmin = xd - nxw * (1 - (xl[1]-xd)/(xl[1]-xl[0]))
-            nxmax = nxmin + nxw
-        else:
-            nxmin, nxmax = xl[0], xl[1]
-            
-        if scale_y != 1.0:
-            nymin = yd - nyh * (1 - (yl[1]-yd)/(yl[1]-yl[0]))
-            nymax = nymin + nyh
-        else:
-            nymin, nymax = yl[0], yl[1]
-        
-        if nxmin < 0:
-            nxmax -= nxmin
-            nxmin = 0
-            
-        if nymin < 0:
-            nymax -= nymin
-            nymin = 0
-            
-        # NEU: Verhindert Rausscrollen über das eingestellte Y-Max
-        if nymax > ymax_limit:
-            nymin -= (nymax - ymax_limit)
-            nymax = ymax_limit
-            if nymin < 0: nymin = 0
-            
-        self.ax.set_xlim([nxmin, nxmax])
-        self.ax.set_ylim([nymin, nymax])
-        self.canvas.draw_idle()
-
-    def on_press(self, event):
-        self.canvas.get_tk_widget().focus_set()
-        if event.button in [1, 3] and event.inaxes == self.ax and not self.is_measuring:
-            self.press = (event.x, event.y, self.ax.get_xlim(), self.ax.get_ylim())
-
-    def on_release(self, event):
-        self.press = None
-        self.canvas.get_tk_widget().config(cursor="arrow")
-        if not self.is_measuring: self.canvas.draw_idle()
-
-    def on_motion(self, event):
-        if event.inaxes != self.ax or self.is_measuring:
-            if self.annot and self.annot.get_visible(): 
-                self.annot.set_visible(False)
-                self.canvas.draw_idle()
-            return
-
-        try: ymax_limit = float(self.ent_ymax.get().replace(',', '.'))
-        except: ymax_limit = 105
-
-        if self.press and self.current_key in ['x', 'y']:
-            x0, y0, xl, yl = self.press
-            dx, dy = (event.x-x0)*(xl[1]-xl[0])/self.ax.bbox.width, (event.y-y0)*(yl[1]-yl[0])/self.ax.bbox.height
-            
-            nxmin, nxmax = xl[0]-dx, xl[1]-dx
-            nymin, nymax = yl[0]-dy, yl[1]-dy
-            
-            if nxmin < 0: nxmax -= nxmin; nxmin = 0
-            if nymin < 0: nymax -= nymin; nymin = 0
-            
-            # NEU: Verhindert Verschieben über das eingestellte Y-Max
-            if nymax > ymax_limit:
-                nymin -= (nymax - ymax_limit)
-                nymax = ymax_limit
-                if nymin < 0: nymin = 0
-                    
-            self.ax.set_xlim(nxmin, nxmax)
-            self.ax.set_ylim(nymin, nymax)
-            self.canvas.draw_idle()
-            return
-        
-        if self.datasets and event.xdata and self.annot:
-            _, df = self.datasets[-1]
-            if self.smooth_var.get() > 1: df['Druck_mbar'] = df['Druck_mbar'].rolling(window=self.smooth_var.get(), center=True).mean()
-            row = df.loc[(df['Sekunden'] - event.xdata).abs().idxmin()]
-            if abs(row['Sekunden'] - event.xdata) < ((self.ax.get_xlim()[1] - self.ax.get_xlim()[0]) * 0.05):
-                self.annot.xy = (row['Sekunden'], row['Druck_mbar'])
-                self.annot.set_text(f"{row['Sekunden']:.3f} s\n{row['Druck_mbar']:.2f} mbar")
-                self.annot.set_visible(True)
-            else: self.annot.set_visible(False)
-            self.canvas.draw_idle()
+            self.log(f"CSV erfolgreich exportiert: {fp}")
+            messagebox.showinfo("Export erfolgreich", "Die CSV-Datei wurde gespeichert!")
+        except Exception as e: messagebox.showerror("Export-Fehler", f"Konnte CSV nicht speichern:\n{e}")
 
 if __name__ == "__main__":
     root = tk.Tk()
