@@ -385,28 +385,46 @@ class SensorDashboard:
         if fp: self.fig.savefig(fp, dpi=300, bbox_inches='tight'); self.log(f"Graph gespeichert: {fp}")
 
     def export_csv(self):
-        if not self.datasets: return messagebox.showwarning("Fehler", "Es ist keine Messung geladen.")
-        if self.slice_start is None or self.slice_end is None: return messagebox.showwarning("Fehler", "Bitte markiere zuerst einen Bereich im Graphen.")
-        if self.is_measuring: return messagebox.showwarning("Fehler", "Bitte warte, bis die laufende Messung beendet ist.")
+        if not self.datasets: 
+            return messagebox.showwarning("Fehler", "Es ist keine Messung geladen.")
+        if self.slice_start is None or self.slice_end is None: 
+            return messagebox.showwarning("Fehler", "Bitte markiere zuerst einen Bereich im Graphen (Maus ziehen).")
+        if self.is_measuring: 
+            return messagebox.showwarning("Fehler", "Bitte warte, bis die laufende Messung beendet ist.")
 
         fp = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV File", "*.csv")])
-        if not fp: return
+        if not fp: 
+            return 
+            
         try:
             _, df = self.datasets[-1] 
             df_export = df[(df['Sekunden'] >= self.slice_start) & (df['Sekunden'] <= self.slice_end)].copy()
-            if df_export.empty: return messagebox.showwarning("Fehler", "Der markierte Bereich enthält keine Daten!")
             
+            if df_export.empty: 
+                return messagebox.showwarning("Fehler", "Der markierte Bereich enthält keine Daten!")
+            
+            # 1. Die Sekunden auf 0 zurücksetzen
             start_time = df_export['Sekunden'].iloc[0]
             df_export['Sekunden'] = df_export['Sekunden'] - start_time
+            
+            # 2. NEU: Den Index sauber ab 1 neu durchnummerieren
+            if 'Index' in df_export.columns:
+                df_export['Index'] = range(1, len(df_export) + 1)
+            
             note = self.text_notes.get("1.0", tk.END).strip()
             
-            with open(fp, 'w', encoding='utf-8') as f:
+            with open(fp, 'w', encoding='utf-8', newline='') as f:
                 if note:
-                    for line in note.split('\n'): f.write(f"# {line}\n")
-                df_export.to_csv(f, sep=';', index=False, lineterminator='\n')
+                    for line in note.split('\n'): 
+                        f.write(f"# {line}\n")
+                df_export.to_csv(f, sep=';', index=False)
+                
             self.log(f"CSV erfolgreich exportiert: {fp}")
-            messagebox.showinfo("Export erfolgreich", "Die CSV-Datei wurde gespeichert!")
-        except Exception as e: messagebox.showerror("Export-Fehler", f"Konnte CSV nicht speichern:\n{e}")
+            messagebox.showinfo("Export", "Die CSV-Datei wurde gespeichert!\nZeit startet bei 0s, Index beginnt bei 1.")
+            
+        except Exception as e: 
+            self.log(f"ERR: Export fehlgeschlagen: {e}")
+            messagebox.showerror("Export-Fehler", f"Konnte CSV nicht speichern:\n{e}")
 
 if __name__ == "__main__":
     root = tk.Tk()
