@@ -1,6 +1,7 @@
 import threading
 import asyncio
 import time
+import logging
 from bleak import BleakScanner, BleakClient
 from bleak.exc import BleakError
 from config import DEVICE_NAME, STREAM_UUID, CMD_UUID
@@ -10,9 +11,7 @@ class BluetoothHandler:
         self.msg_queue = msg_queue
         self.processor = processor
         self.is_running = False
-
-    def log(self, msg):
-        self.msg_queue.put(("LOG", msg))
+        self.logger = logging.getLogger("SensorApp.Bluetooth")
 
     def start(self):
         if self.is_running: return
@@ -25,42 +24,42 @@ class BluetoothHandler:
         loop.run_until_complete(self._ble_task())
 
     async def _ble_task(self):
-        self.log("INFO: Automatischer Verbindungsmodus gestartet.")
+        self.logger.info("Automatischer Verbindungsmodus gestartet.")
         
         while True:
-            self.msg_queue.put(("STATUS", ("🟡 Suche...", "#FFA500")))
+            self.msg_queue.put(("STATUS", ("🟡 Suche...", "warning")))
             try:
                 devices = await BleakScanner.discover(timeout=5.0)
             except BleakError as e:
-                self.log(f"ERR: Bluetooth-Adapter Fehler: {e}")
-                self.msg_queue.put(("STATUS", ("🔴 Adapter-Fehler", "#D32F2F")))
+                self.logger.error(f"Bluetooth-Adapter Fehler: {e}")
+                self.msg_queue.put(("STATUS", ("🔴 Adapter-Fehler", "danger")))
                 await asyncio.sleep(5)
                 continue
             except Exception as e:
-                self.log(f"ERR: Scan-Fehler: {e}")
+                self.logger.error(f"Scan-Fehler: {e}")
                 await asyncio.sleep(5)
                 continue
 
             target = next((d for d in devices if d.name == DEVICE_NAME), None)
 
             if not target:
-                self.msg_queue.put(("STATUS", ("🔴 Nicht gefunden", "#D32F2F")))
+                self.msg_queue.put(("STATUS", ("🔴 Nicht gefunden", "danger")))
                 await asyncio.sleep(3)
                 continue
 
-            self.log(f"Gefunden: {target.address}. Verbinde...")
-            self.msg_queue.put(("STATUS", ("🟡 Verbinde...", "#FFA500")))
+            self.logger.info(f"Gefunden: {target.address}. Verbinde...")
+            self.msg_queue.put(("STATUS", ("🟡 Verbinde...", "warning")))
             
             def on_disconnect(client):
-                self.log("WARN: Verbindung abgebrochen. Versuche Neustart...")
-                self.msg_queue.put(("STATUS", ("🔴 Getrennt", "#D32F2F")))
+                self.logger.warning("Verbindung abgebrochen. Versuche Neustart...")
+                self.msg_queue.put(("STATUS", ("🔴 Getrennt", "danger")))
                 if self.processor.file:
                     self.processor.close_session()
 
             try:
                 async with BleakClient(target, disconnected_callback=on_disconnect) as client:
-                    self.log("🟢 Verbunden! Warte auf Tasterdruck...")
-                    self.msg_queue.put(("STATUS", ("🟢 Verbunden", "#4CAF50")))
+                    self.logger.info("🟢 Verbunden! Warte auf Tasterdruck...")
+                    self.msg_queue.put(("STATUS", ("🟢 Verbunden", "success")))
 
                     last_heartbeat = time.time()
 
@@ -68,13 +67,12 @@ class BluetoothHandler:
                         nonlocal last_heartbeat
                         msg = data.decode('utf-8').strip()
                         
-                        # Heartbeat abfangen
                         if msg == "HB":
                             last_heartbeat = time.time()
                             return
                             
                         if msg.startswith("INFO:") or msg.startswith("WARN:") or msg.startswith("ERR:"):
-                            self.log(f"Arduino: {msg}")
+                            self.logger.info(f"Arduino: {msg}")
                         elif msg.startswith("START:"):
                             sec = int(msg.split(":")[1])
                             self.processor.start_session(sec)
@@ -96,18 +94,16 @@ class BluetoothHandler:
 
                     while client.is_connected:
                         await asyncio.sleep(1)
-                        
-                        # Timeout-Check für den Heartbeat (5 Sekunden)
                         if time.time() - last_heartbeat > 5.0:
-                            self.log("ERR: Heartbeat Timeout! Verbindung verloren. Suche neu...")
+                            self.logger.error("Heartbeat Timeout! Verbindung verloren. Suche neu...")
                             await client.disconnect()
                             break
                         
             except BleakError as e:
-                self.log(f"ERR: Bluetooth-Verbindungsfehler: {e}")
-                self.msg_queue.put(("STATUS", ("🔴 Fehler", "#D32F2F")))
+                self.logger.error(f"Bluetooth-Verbindungsfehler: {e}")
+                self.msg_queue.put(("STATUS", ("🔴 Fehler", "danger")))
                 await asyncio.sleep(3)
             except Exception as e:
-                self.log(f"ERR: Unerwarteter Fehler: {e}")
-                self.msg_queue.put(("STATUS", ("🔴 Fehler", "#D32F2F")))
+                self.logger.error(f"Unerwarteter Fehler: {e}")
+                self.msg_queue.put(("STATUS", ("🔴 Fehler", "danger")))
                 await asyncio.sleep(3)
