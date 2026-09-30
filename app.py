@@ -5,11 +5,18 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import os
 import sys
+import requests
+import webbrowser
+import threading
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.widgets import SpanSelector
 
 from data_processor import DataProcessor
 from bluetooth_handler import BluetoothHandler
+
+# --- NEU: Hier deine Daten eintragen! ---
+APP_VERSION = "1.0"
+GITHUB_REPO = "Justus2004/Bernardograph" # z.B. "Justus/Drucksensor-App"
 
 class SensorDashboard:
     def __init__(self, root):
@@ -46,8 +53,28 @@ class SensorDashboard:
         self.log("Bereit. Starte automatische Bluetooth-Verbindung...\nTipp: Halte 'x' oder 'y' beim Scrollen für gezielten Zoom!")
         
         self.root.after(500, self.start_connection)
+        self.root.after(2000, self.check_for_updates) # Prüft 2 Sekunden nach Start
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
-
+        
+    def check_for_updates(self, manual=False):
+            def check():
+                try:
+                    url = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
+                    response = requests.get(url, timeout=3).json()
+                    latest_version = response.get("tag_name", "").replace("v", "")
+                    
+                    if latest_version and latest_version > APP_VERSION:
+                        ans = messagebox.askyesno("Update verfügbar!", f"Version {latest_version} ist da (Aktuell: {APP_VERSION}).\n\nMöchtest du die neue Setup-Datei jetzt herunterladen?")
+                        if ans:
+                            webbrowser.open(response["html_url"])
+                    elif manual:
+                        messagebox.showinfo("Aktuell", "Du hast bereits die neueste Version!")
+                except Exception:
+                    if manual:
+                        messagebox.showerror("Fehler", "Konnte nicht nach Updates suchen. Internetverbindung prüfen.")
+            
+            threading.Thread(target=check, daemon=True).start()
+            
     def on_closing(self):
         print("Beende Programm hart...")
         try:
@@ -70,6 +97,9 @@ class SensorDashboard:
         
         self.btn_connect = tk.Button(top_frame, text="Bluetooth Start", command=self.start_connection, bg="#0078D7", fg="white", font=("Arial", 10, "bold"))
         self.btn_connect.pack(side=tk.LEFT, padx=5)
+
+        self.btn_update = tk.Button(top_frame, text=f"v{APP_VERSION} (Update Info)", command=lambda: self.check_for_updates(manual=True), bg="#9C27B0", fg="white", font=("Arial", 10, "bold"))
+        self.btn_update.pack(side=tk.RIGHT, padx=5)
         
         self.btn_load = tk.Button(top_frame, text="CSV laden (Neu)", command=lambda: self.load_csv(append=False), bg="#4CAF50", fg="white", font=("Arial", 10, "bold"))
         self.btn_load.pack(side=tk.LEFT, padx=5)
