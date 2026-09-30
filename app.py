@@ -1,3 +1,4 @@
+import tkinter as tk
 import ttkbootstrap as tb
 from ttkbootstrap.constants import *
 from tkinter.scrolledtext import ScrolledText
@@ -92,7 +93,7 @@ class SensorDashboard:
         os._exit(0) 
 
     def setup_ui(self):
-        main_paned = tb.PanedWindow(self.root, orient=HORIZONTAL)
+        main_paned = tk.PanedWindow(self.root, orient=tk.HORIZONTAL)
         main_paned.pack(fill=BOTH, expand=True)
 
         left_frame = tb.Frame(main_paned)
