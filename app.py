@@ -74,7 +74,7 @@ class SensorDashboard:
                         messagebox.showerror("Fehler", "Konnte nicht nach Updates suchen. Internetverbindung prüfen.")
             
             threading.Thread(target=check, daemon=True).start()
-            
+
     def on_closing(self):
         print("Beende Programm hart...")
         try:
@@ -460,23 +460,22 @@ class SensorDashboard:
         if not self.datasets or self.slice_start is None or self.is_measuring: return
         fp = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV File", "*.csv")])
         if fp:
-            # Exportiert immer den aktuell fokussierten (letzten) Datensatz
             _, df = self.datasets[-1] 
             df_export = df[(df['Sekunden'] >= self.slice_start) & (df['Sekunden'] <= self.slice_end)].copy()
             
-            # --- NEU: Zeitstempel-Reset ---
-            df_export['Sekunden'] = df_export['Sekunden'] - self.slice_start
+            # Setzt den allerersten Zeitstempel des Exports exakt auf 0.0
+            start_time = df_export['Sekunden'].iloc[0]
+            df_export['Sekunden'] = df_export['Sekunden'] - start_time
             
             note = self.text_notes.get("1.0", tk.END).strip()
             
             with open(fp, 'w', encoding='utf-8') as f:
                 if note:
-                    # Hänge Notizen als Kommentare oben an
                     for line in note.split('\n'):
                         f.write(f"# {line}\n")
                 df_export.to_csv(f, sep=';', index=False, lineterminator='\n')
                 
-            self.log(f"CSV exportiert (Zeit bei 0s gestartet): {fp}")
+            self.log(f"CSV exportiert (Zeit startet bei 0.0s): {fp}")
 
     def on_key_press(self, event):
         self.current_key = event.key.lower() if event.key else None
@@ -486,6 +485,9 @@ class SensorDashboard:
 
     def on_zoom(self, event):
         if event.inaxes != self.ax or self.is_measuring: return
+        
+        try: ymax_limit = float(self.ent_ymax.get().replace(',', '.'))
+        except: ymax_limit = 105
         
         scale = 1/1.2 if event.button == 'up' else 1.2
         scale_x = scale if self.current_key == 'x' else (scale if self.current_key not in ['x', 'y'] else 1.0)
@@ -514,9 +516,16 @@ class SensorDashboard:
         if nxmin < 0:
             nxmax -= nxmin
             nxmin = 0
+            
         if nymin < 0:
             nymax -= nymin
             nymin = 0
+            
+        # NEU: Verhindert Rausscrollen über das eingestellte Y-Max
+        if nymax > ymax_limit:
+            nymin -= (nymax - ymax_limit)
+            nymax = ymax_limit
+            if nymin < 0: nymin = 0
             
         self.ax.set_xlim([nxmin, nxmax])
         self.ax.set_ylim([nymin, nymax])
@@ -539,15 +548,24 @@ class SensorDashboard:
                 self.canvas.draw_idle()
             return
 
+        try: ymax_limit = float(self.ent_ymax.get().replace(',', '.'))
+        except: ymax_limit = 105
+
         if self.press and self.current_key in ['x', 'y']:
-            # Panning nur wenn eine Taste gedrückt wird, da sonst Konflikt mit SpanSelector
             x0, y0, xl, yl = self.press
             dx, dy = (event.x-x0)*(xl[1]-xl[0])/self.ax.bbox.width, (event.y-y0)*(yl[1]-yl[0])/self.ax.bbox.height
             
             nxmin, nxmax = xl[0]-dx, xl[1]-dx
             nymin, nymax = yl[0]-dy, yl[1]-dy
+            
             if nxmin < 0: nxmax -= nxmin; nxmin = 0
             if nymin < 0: nymax -= nymin; nymin = 0
+            
+            # NEU: Verhindert Verschieben über das eingestellte Y-Max
+            if nymax > ymax_limit:
+                nymin -= (nymax - ymax_limit)
+                nymax = ymax_limit
+                if nymin < 0: nymin = 0
                     
             self.ax.set_xlim(nxmin, nxmax)
             self.ax.set_ylim(nymin, nymax)
