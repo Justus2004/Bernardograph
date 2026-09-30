@@ -1,6 +1,6 @@
 import ttkbootstrap as tb
 from ttkbootstrap.constants import *
-from ttkbootstrap.scrolled import ScrolledText
+from tkinter.scrolledtext import ScrolledText
 from tkinter import messagebox, filedialog
 import queue
 import pandas as pd
@@ -154,7 +154,7 @@ class SensorDashboard:
         self.canvas.mpl_connect('key_press_event', self.plot_events.on_key_press)
         self.canvas.mpl_connect('key_release_event', self.plot_events.on_key_release)
         
-        self.log_text = ScrolledText(left_frame, height=6, font=("Consolas", 10))
+        self.log_text = ScrolledText(left_frame, height=6, bg="#222222", fg="white", font=("Consolas", 10), insertbackground="white")
         self.log_text.pack(side=BOTTOM, padx=10, pady=5, fill=X)
 
         right_frame = tb.Frame(main_paned, padding=10)
