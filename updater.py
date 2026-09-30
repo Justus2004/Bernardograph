@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import messagebox, ttk
+from tkinter import messagebox
 import requests
 import threading
 import tempfile
@@ -22,50 +22,44 @@ class AppUpdater:
                 if latest_version and latest_version > APP_VERSION:
                     download_url = next((asset["browser_download_url"] for asset in response.get("assets", []) if asset["name"].endswith(".exe")), None)
                     if download_url:
-                        ans = messagebox.askyesno("Update verfügbar!", f"Version {latest_version} ist verfügbar.\n\nSoll das Update jetzt heruntergeladen und automatisch installiert werden?")
-                        if ans: self.install_update(download_url)
-                    elif manual: messagebox.showinfo("Fehler", "Keine Setup-Datei im Release gefunden.")
-                elif manual: messagebox.showinfo("Aktuell", "Du hast bereits die neueste Version!")
+                        self.log(f"INFO: Update v{latest_version} gefunden. Lade lautlos im Hintergrund...")
+                        self.download_silently(download_url, latest_version)
+                    elif manual: 
+                        messagebox.showinfo("Fehler", "Keine Setup-Datei gefunden.")
+                elif manual: 
+                    messagebox.showinfo("Aktuell", "Du hast bereits die neueste Version!")
             except Exception as e:
                 if manual: messagebox.showerror("Fehler", f"Konnte nicht nach Updates suchen: {e}")
+        
         threading.Thread(target=check, daemon=True).start()
 
-    def install_update(self, download_url):
-        prog_win = tk.Toplevel(self.root)
-        prog_win.title("Update wird heruntergeladen")
-        prog_win.geometry("400x150")
-        prog_win.attributes("-topmost", True)
-        
-        tk.Label(prog_win, text="Bitte warten, lade neue Version...", font=("Arial", 11)).pack(pady=15)
-        progress = ttk.Progressbar(prog_win, orient=tk.HORIZONTAL, length=300, mode='determinate')
-        progress.pack(pady=5)
-        lbl_percent = tk.Label(prog_win, text="0 %", font=("Arial", 10, "bold"))
-        lbl_percent.pack()
+    def download_silently(self, download_url, version):
+        try:
+            temp_exe = os.path.join(tempfile.gettempdir(), "Drucksensor_Update.exe")
+            r = requests.get(download_url, stream=True)
+            
+            with open(temp_exe, 'wb') as f:
+                for chunk in r.iter_content(chunk_size=8192):
+                    if chunk: f.write(chunk)
+            
+            self.log("INFO: Hintergrund-Download abgeschlossen. Warte auf Bestätigung.")
+            
+            # Erst wenn die Datei zu 100% da ist, wird der Nutzer gefragt
+            self.root.after(0, lambda: self.prompt_install(version, temp_exe))
+            
+        except Exception as e:
+            self.log(f"ERR: Hintergrund-Download fehlgeschlagen: {e}")
 
-        def download_and_run():
+    def prompt_install(self, version, exe_path):
+        ans = messagebox.askyesno("Update bereit!", f"Version {version} wurde im Hintergrund fertig heruntergeladen.\n\nMöchtest du die App jetzt kurz neustarten (dauert ca. 3 Sekunden)?")
+        if ans:
+            subprocess.Popen([exe_path, '/SILENT', '/SP-'])
+            os._exit(0)
+        else:
+            # Update wurde übersprungen -> Datei sofort sauber verwerfen
+            self.log("INFO: Update-Installation übersprungen. Heruntergeladene Datei wird gelöscht.")
             try:
-                self.log("INFO: Lade Update herunter...")
-                temp_exe = os.path.join(tempfile.gettempdir(), "Drucksensor_Update.exe")
-                r = requests.get(download_url, stream=True)
-                total_size = int(r.headers.get('content-length', 0))
-                downloaded = 0
-                
-                with open(temp_exe, 'wb') as f:
-                    for chunk in r.iter_content(chunk_size=8192):
-                        if chunk:
-                            f.write(chunk)
-                            downloaded += len(chunk)
-                            if total_size > 0:
-                                percent = int((downloaded / total_size) * 100)
-                                self.root.after(0, lambda p=percent: progress.config(value=p))
-                                self.root.after(0, lambda p=percent: lbl_percent.config(text=f"{p} %"))
-                
-                self.log("INFO: Download fertig. Starte Installation...")
-                self.root.after(0, prog_win.destroy)
-                subprocess.Popen([temp_exe, '/SILENT', '/SP-'])
-                os._exit(0)
+                if os.path.exists(exe_path):
+                    os.remove(exe_path)
             except Exception as e:
-                self.root.after(0, prog_win.destroy)
-                self.root.after(0, lambda: messagebox.showerror("Update-Fehler", f"Fehler beim Herunterladen: {e}"))
-                
-        threading.Thread(target=download_and_run, daemon=True).start()
+                self.log(f"ERR: Konnte temporäre Update-Datei nicht löschen: {e}")

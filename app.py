@@ -388,6 +388,11 @@ class SensorDashboard:
         self.ent_thresh.delete(0, tk.END)
         self.lbl_thresh_res.config(text="")
         self.update_plot()
+        
+    def export_png(self):
+            if not self.datasets or self.is_measuring: return
+            fp = filedialog.asksaveasfilename(defaultextension=".png", filetypes=[("PNG Image", "*.png")])
+            if fp: self.fig.savefig(fp, dpi=300, bbox_inches='tight'); self.log(f"Graph gespeichert: {fp}")
 
     def export_notes(self):
         note = self.text_notes.get("1.0", tk.END).strip()

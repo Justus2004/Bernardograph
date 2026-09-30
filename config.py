@@ -5,5 +5,5 @@ CMD_UUID = "00002a6f-0000-1000-8000-00805f9b34fb"
 OUTPUT_DIR = "messungen"
 
 # App Konfiguration
-APP_VERSION = "1.0.9"
+APP_VERSION = "1.0.10"
 GITHUB_REPO = "Justus2004/Bernardograph"
