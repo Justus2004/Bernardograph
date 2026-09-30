@@ -19,3 +19,6 @@ Name: "{autodesktop}\Drucksensor Dashboard"; Filename: "{app}\app.exe"; Tasks: d
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
+
+[Run]
+Filename: "{app}\app.exe"; Flags: nowait

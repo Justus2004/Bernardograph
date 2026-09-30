@@ -8,6 +8,8 @@ import sys
 import requests
 import webbrowser
 import threading
+import tempfile
+import subprocess
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.widgets import SpanSelector
 
@@ -15,7 +17,7 @@ from data_processor import DataProcessor
 from bluetooth_handler import BluetoothHandler
 
 # --- NEU: Hier deine Daten eintragen! ---
-APP_VERSION = "1.0.4"
+APP_VERSION = "1.0.5"
 GITHUB_REPO = "Justus2004/Bernardograph" # z.B. "Justus/Drucksensor-App"
 
 class SensorDashboard:
@@ -57,23 +59,58 @@ class SensorDashboard:
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
         
     def check_for_updates(self, manual=False):
-            def check():
-                try:
-                    url = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
-                    response = requests.get(url, timeout=3).json()
-                    latest_version = response.get("tag_name", "").replace("v", "")
-                    
-                    if latest_version and latest_version > APP_VERSION:
-                        ans = messagebox.askyesno("Update verfügbar!", f"Version {latest_version} ist da (Aktuell: {APP_VERSION}).\n\nMöchtest du die neue Setup-Datei jetzt herunterladen?")
+        def check():
+            try:
+                url = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
+                response = requests.get(url, timeout=3).json()
+                latest_version = response.get("tag_name", "").replace("v", "")
+                
+                if latest_version and latest_version > APP_VERSION:
+                    # 1. Finde den direkten Download-Link der .exe in den Release-Assets
+                    download_url = None
+                    for asset in response.get("assets", []):
+                        if asset["name"].endswith(".exe"):
+                            download_url = asset["browser_download_url"]
+                            break
+                            
+                    if download_url:
+                        ans = messagebox.askyesno("Update verfügbar!", f"Version {latest_version} ist verfügbar.\n\nSoll das Update jetzt heruntergeladen und automatisch installiert werden?")
                         if ans:
-                            webbrowser.open(response["html_url"])
-                    elif manual:
-                        messagebox.showinfo("Aktuell", "Du hast bereits die neueste Version!")
-                except Exception:
-                    if manual:
-                        messagebox.showerror("Fehler", "Konnte nicht nach Updates suchen. Internetverbindung prüfen.")
-            
-            threading.Thread(target=check, daemon=True).start()
+                            self.install_update(download_url)
+                    else:
+                        if manual: messagebox.showinfo("Fehler", "Keine Setup-Datei im Release gefunden.")
+                        
+                elif manual:
+                    messagebox.showinfo("Aktuell", "Du hast bereits die neueste Version!")
+            except Exception as e:
+                if manual: messagebox.showerror("Fehler", f"Konnte nicht nach Updates suchen: {e}")
+        
+        threading.Thread(target=check, daemon=True).start()
+
+    def install_update(self, download_url):
+        def download_and_run():
+            try:
+                self.log("INFO: Lade Update herunter. Bitte warten...")
+                
+                # 1. Datei in einen temporären Windows-Ordner laden
+                temp_exe = os.path.join(tempfile.gettempdir(), "Drucksensor_Update.exe")
+                r = requests.get(download_url, stream=True)
+                with open(temp_exe, 'wb') as f:
+                    for chunk in r.iter_content(chunk_size=8192):
+                        f.write(chunk)
+                
+                self.log("INFO: Download fertig. Starte Installation...")
+                
+                # 2. Installer mit "/SILENT" starten (zeigt nur Fortschrittsbalken, keine Klicks nötig)
+                subprocess.Popen([temp_exe, '/SILENT', '/SP-'])
+                
+                # 3. App hart beenden, damit der Installer die Dateien überschreiben kann
+                os._exit(0)
+                
+            except Exception as e:
+                messagebox.showerror("Update-Fehler", f"Fehler beim Installieren: {e}")
+                
+        threading.Thread(target=download_and_run, daemon=True).start()
 
     def on_closing(self):
         print("Beende Programm hart...")
