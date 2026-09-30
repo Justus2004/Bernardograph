@@ -27,7 +27,7 @@ jobs:
         pip install -r requirements.txt
 
     - name: Code-Test (Syntax prüfen)
-        run: python -m py_compile app.py
+      run: python -m py_compile app.py
 
     - name: App kompilieren
       run: |
