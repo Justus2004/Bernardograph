@@ -165,6 +165,9 @@ class SensorDashboard:
         self.text_notes = tk.Text(lf_export, height=3, width=30, font=("Arial", 9))
         self.text_notes.pack(fill=tk.X, pady=2)
         
+        # --- NEU: Button für reinen Notiz-Export ---
+        tk.Button(lf_export, text="Notizen separat als Text speichern", command=self.export_notes, width=25).pack(pady=2)
+        
         tk.Button(lf_export, text="Aktuelle Ansicht als PNG", command=self.export_png, width=25).pack(pady=2)
         tk.Button(lf_export, text="Markierten Bereich als CSV", command=self.export_csv, width=25).pack(pady=2)
 
@@ -264,7 +267,16 @@ class SensorDashboard:
         if self.is_measuring: return messagebox.showwarning("Achtung", "Bitte warte, bis die laufende Messung abgeschlossen ist.")
         filepath = direct_path or filedialog.askopenfilename(title="Messdaten auswählen", filetypes=[("CSV Dateien", "*.csv")])
         if filepath:
-            if not append: self.datasets = [] 
+            if not append: 
+                self.datasets = [] 
+                # --- NEU: Radikaler Reset aller UI-Eingaben ---
+                self.text_notes.delete("1.0", tk.END)
+                self.ent_ymax.delete(0, tk.END)
+                self.ent_ymax.insert(0, "105")
+                self.clear_slice()
+                self.clear_threshold()
+                self.smooth_var.set(1)
+                
             self.current_filepath = filepath
             try:
                 self.log(f"INFO: Lade Daten: {os.path.basename(filepath)}")
@@ -283,14 +295,12 @@ class SensorDashboard:
                     else: df['Sekunden'] = (df['Zeitstempel'].astype(float) - 1) / 1000.0
 
                 self.datasets.append((os.path.basename(filepath), df))
-                self.clear_slice()
-                self.clear_threshold()
-                self.smooth_var.set(1)
                 self.update_plot()
+                self.reset_view() # Zwingt den Graphen sofort in die korrekte Y-Max Ansicht
             except Exception as e:
                 self.log(f"ERR: Fehler beim Laden: {e}")
                 messagebox.showerror("Ladefehler", f"Fehler: {e}")
-
+                
     def update_plot(self):
         if not self.datasets or self.is_measuring: return
         window = self.smooth_var.get()
@@ -379,10 +389,17 @@ class SensorDashboard:
         self.lbl_thresh_res.config(text="")
         self.update_plot()
 
-    def export_png(self):
-        if not self.datasets or self.is_measuring: return
-        fp = filedialog.asksaveasfilename(defaultextension=".png", filetypes=[("PNG Image", "*.png")])
-        if fp: self.fig.savefig(fp, dpi=300, bbox_inches='tight'); self.log(f"Graph gespeichert: {fp}")
+    def export_notes(self):
+        note = self.text_notes.get("1.0", tk.END).strip()
+        if not note: 
+            return messagebox.showwarning("Fehler", "Das Notizfeld ist leer.")
+            
+        fp = filedialog.asksaveasfilename(defaultextension=".txt", filetypes=[("Textdatei", "*.txt")])
+        if fp:
+            with open(fp, 'w', encoding='utf-8') as f:
+                f.write(note)
+            self.log(f"Notizen gespeichert: {fp}")
+            messagebox.showinfo("Erfolg", "Notizen wurden als Textdatei gespeichert.")
 
     def export_csv(self):
         if not self.datasets: 
