@@ -196,8 +196,8 @@ class SensorDashboard:
         self.canvas = FigureCanvasTkAgg(self.fig, master=plot_frame)
         self.canvas.get_tk_widget().pack(fill=BOTH, expand=True)
         
-        self.span = SpanSelector(self.ax, self.on_span_select, 'horizontal', useblit=True, props=dict(alpha=0.25, facecolor='cyan'), interactive=True)
-        
+        self.span = SpanSelector(self.ax, self.on_span_select, 'horizontal', useblit=True, props=dict(alpha=0.25, facecolor='cyan'), interactive=False)
+
         self.canvas.mpl_connect('scroll_event', self.plot_events.on_zoom)
         self.canvas.mpl_connect('button_press_event', self.plot_events.on_press)
         self.canvas.mpl_connect('button_release_event', self.plot_events.on_release)
@@ -321,15 +321,17 @@ class SensorDashboard:
 
     def on_span_select(self, xmin, xmax):
         if len(self.datasets) > 1:
-            if hasattr(self, 'span') and self.span:
-                try: self.span.set_visible(False)
-                except: pass
             messagebox.showwarning("Achtung", "Die Zeitraum-Analyse ist nur bei einem einzelnen Datensatz möglich.")
             return
 
-        if hasattr(self, 'span') and self.span:
-            try: self.span.set_visible(True)
-            except: pass
+        # Ignoriere einfache Klicks (ohne Ziehen)
+        if xmin == xmax:
+            self.clear_slice()
+            return
+
+        # Automatisch umdrehen, falls von rechts nach links gezogen wurde
+        if xmin > xmax:
+            xmin, xmax = xmax, xmin
             
         self.ent_start.delete(0, tk.END)
         self.ent_start.insert(0, f"{xmin:.3f}")
@@ -570,7 +572,19 @@ class SensorDashboard:
         try:
             s_start = float(self.ent_start.get().replace(',', '.'))
             s_end = float(self.ent_end.get().replace(',', '.'))
-            if s_start >= s_end: return messagebox.showwarning("Eingabe", "Start muss kleiner als Ende sein.")
+            
+            # Bei exakt gleichen Werten Analyse abbrechen
+            if s_start == s_end: 
+                self.clear_slice()
+                return
+                
+            # Wenn Start größer als Ende, Zahlen einfach tauschen statt Fehler zu werfen
+            if s_start > s_end:
+                s_start, s_end = s_end, s_start
+                self.ent_start.delete(0, tk.END)
+                self.ent_start.insert(0, f"{s_start:.3f}")
+                self.ent_end.delete(0, tk.END)
+                self.ent_end.insert(0, f"{s_end:.3f}")
                 
             self.slice_start, self.slice_end = s_start, s_end
             _, raw_df = self.datasets[-1] 
@@ -582,8 +596,11 @@ class SensorDashboard:
                 tdiff = sliced.iloc[-1]['Sekunden'] - sliced.iloc[0]['Sekunden']
                 rate = (sliced.iloc[-1]['Druck_mbar'] - sliced.iloc[0]['Druck_mbar']) / tdiff if tdiff > 0 else 0
                 self.lbl_stats.config(text=f"Schnitt: {sliced['Druck_mbar'].mean():.2f} mbar\nMin: {sliced['Druck_mbar'].min():.2f} mbar\nMax: {sliced['Druck_mbar'].max():.2f} mbar\nσ: ±{sliced['Druck_mbar'].std():.2f} mbar\nRate: {rate:.2f} mbar/s")
-            self.update_plot()
-        except ValueError: messagebox.showerror("Fehler", "Bitte gültige Zahlen eingeben.")
+            
+            # Wichtig: preserve_limits=True nutzen, damit man nach dem Markieren im Zoom bleibt
+            self.update_plot(preserve_limits=True)
+        except ValueError: 
+            messagebox.showerror("Fehler", "Bitte gültige Zahlen eingeben.")
 
     def clear_slice(self):
         self.slice_start = self.slice_end = None
