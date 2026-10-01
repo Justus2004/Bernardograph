@@ -30,7 +30,7 @@ class QueueLoggingHandler(logging.Handler):
 class SensorDashboard:
     def __init__(self, root):
         self.root = root
-        self.root.title("Drucksensor Dashboard & Analyse")
+        self.root.title("Bernardograph - Dashboard & Analyse")
         self.root.geometry("1450x850")
         self.root.minsize(900, 600)
         
@@ -741,6 +741,13 @@ if __name__ == "__main__":
     try:
         import ttkbootstrap as tb
         root = tb.Window(themename="flatly")
+        
+        # Icon für das Programmfenster und die Taskleiste setzen
+        try:
+            root.iconbitmap("icon.ico")
+        except Exception as e:
+            pass # Falls (noch) kein Icon da ist, starte die App trotzdem
+            
         app = SensorDashboard(root)
         root.mainloop()
     except Exception as e:

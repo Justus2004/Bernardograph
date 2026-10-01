@@ -17,8 +17,8 @@ class AppUpdater:
         self.download_url = None
         
         # Temp-Pfade für EXE und Versions-Tracking
-        self.exe_path = os.path.join(tempfile.gettempdir(), "Drucksensor_Update.exe")
-        self.version_file = os.path.join(tempfile.gettempdir(), "Drucksensor_Update_Version.txt")
+        self.exe_path = os.path.join(tempfile.gettempdir(), "Bernardograph_Update.exe")
+        self.version_file = os.path.join(tempfile.gettempdir(), "Bernardograph_Update_Version.txt")
         
         # Lese gespeicherte Version, falls vorhanden
         self.downloaded_version = None

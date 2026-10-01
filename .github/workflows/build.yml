@@ -31,7 +31,7 @@ jobs:
 
     - name: App kompilieren
       run: |
-        pyinstaller --noconfirm --onedir --windowed app.py
+        pyinstaller --noconfirm --onedir --windowed --icon=icon.ico app.py
 
     - name: Version aus Tag auslesen
       id: get_version
@@ -47,7 +47,7 @@ jobs:
     - name: Release veröffentlichen
       uses: softprops/action-gh-release@v2
       with:
-        files: Output/Drucksensor_Setup.exe
+        files: Output/Bernardograph_Setup.exe
         name: Release ${{ github.ref_name }}
         draft: false
         prerelease: false
