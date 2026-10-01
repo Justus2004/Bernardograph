@@ -1070,3 +1070,106 @@ Tipp: Halte 'x' oder 'y' beim Scrollen für gezielten Zoom!
 2026-09-30 15:41:47,812 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
 2026-09-30 15:41:52,827 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
 2026-09-30 15:41:57,846 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 07:58:44,354 - INFO - SensorApp - Bereit. Starte automatische Bluetooth-Verbindung...
+Tipp: Halte 'x' oder 'y' beim Scrollen für gezielten Zoom!
+2026-10-01 07:58:44,869 - INFO - SensorApp.Bluetooth - Automatischer Verbindungsmodus gestartet.
+2026-10-01 07:58:44,922 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 07:58:49,927 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 07:58:54,523 - INFO - SensorApp - Lade Daten: messung_20260929_163110_d254s.csv
+2026-10-01 07:58:54,940 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 07:58:57,674 - INFO - SensorApp - Notizen in CSV aktualisiert: C:/Users/K1019948/Downloads/messung_20260929_163110_d254s.csv
+2026-10-01 07:58:59,944 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 07:59:03,927 - INFO - SensorApp - Lade Daten: messung_20260929_162538_d254s.csv
+2026-10-01 07:59:04,959 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 07:59:05,889 - INFO - SensorApp - Lade Daten: messung_20260929_163110_d254s.csv
+2026-10-01 07:59:09,974 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 07:59:14,985 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 07:59:19,993 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 07:59:24,906 - INFO - SensorApp - Notizen in CSV aktualisiert: C:/Users/K1019948/Downloads/messung_20260929_163110_d254s.csv
+2026-10-01 07:59:25,006 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 07:59:30,010 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 07:59:30,622 - INFO - SensorApp - Lade Daten: messung_20260929_163246_d254s.csv
+2026-10-01 07:59:32,473 - INFO - SensorApp - Lade Daten: messung_20260929_163110_d254s.csv
+2026-10-01 07:59:35,025 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 07:59:40,040 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 07:59:44,257 - INFO - SensorApp - Notizen in CSV aktualisiert: C:/Users/K1019948/Downloads/messung_20260929_163110_d254s.csv
+2026-10-01 07:59:45,043 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 07:59:47,613 - INFO - SensorApp - Lade Daten: messung_20260929_163246_d254s.csv
+2026-10-01 07:59:49,654 - INFO - SensorApp - Lade Daten: messung_20260929_163110_d254s.csv
+2026-10-01 07:59:50,057 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 07:59:55,074 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:00:00,089 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:00:05,092 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:00:10,106 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:00:15,121 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:00:20,137 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:00:25,156 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:00:30,169 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:00:35,178 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:00:40,194 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:00:45,207 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:00:50,213 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:00:55,223 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:01:00,237 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:01:05,260 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:01:10,269 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:01:15,274 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:01:20,294 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:01:25,312 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:01:30,331 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:01:35,341 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:01:40,359 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:01:45,377 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:01:50,388 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:01:55,390 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:02:00,407 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:02:05,421 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:02:10,424 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:02:15,441 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:02:20,455 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:02:25,463 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:02:26,254 - INFO - SensorApp - Notizen in CSV aktualisiert: C:/Users/K1019948/Downloads/messung_20260929_163110_d254s.csv
+2026-10-01 08:02:29,938 - INFO - SensorApp - Lade Daten: messung_20260929_162538_d254s.csv
+2026-10-01 08:02:30,479 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:02:31,922 - INFO - SensorApp - Lade Daten: messung_20260929_163110_d254s.csv
+2026-10-01 08:02:35,496 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:02:40,518 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:02:45,523 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:02:50,541 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:02:55,559 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:03:00,578 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:03:05,598 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:03:10,609 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:03:15,626 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:03:20,644 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:03:25,658 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:03:30,681 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:03:35,692 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:03:40,709 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:03:45,714 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:03:50,730 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:03:55,742 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:04:00,758 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:04:05,775 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:04:10,794 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:04:14,233 - INFO - SensorApp - Bereit. Starte automatische Bluetooth-Verbindung...
+Tipp: Halte 'x' oder 'y' beim Scrollen für gezielten Zoom!
+2026-10-01 08:04:14,742 - INFO - SensorApp.Bluetooth - Automatischer Verbindungsmodus gestartet.
+2026-10-01 08:04:14,757 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:04:17,457 - INFO - SensorApp - Lade Daten: messung_20260929_163110_d254s.csv
+2026-10-01 08:04:19,774 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:04:24,083 - INFO - SensorApp - Lade Daten: messung_20260929_162538_d254s.csv
+2026-10-01 08:04:24,774 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:04:26,541 - INFO - SensorApp - Lade Daten: messung_20260929_163110_d254s.csv
+2026-10-01 08:04:29,784 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:04:34,791 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:04:39,792 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:04:44,794 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:04:45,833 - ERROR - SensorApp - Fehler beim Speichern der Notizen in die CSV: [Errno 13] Permission denied: 'C:/Users/K1019948/Downloads/messung_20260929_163110_d254s.csv'
+2026-10-01 08:04:49,811 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:04:53,328 - ERROR - SensorApp - Fehler beim Speichern der Notizen in die CSV: [Errno 13] Permission denied: 'C:/Users/K1019948/Downloads/messung_20260929_163110_d254s.csv'
+2026-10-01 08:04:54,827 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:04:59,016 - INFO - SensorApp - Notizen in CSV aktualisiert: C:/Users/K1019948/Downloads/messung_20260929_163110_d254s.csv
+2026-10-01 08:04:59,843 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:05:04,860 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-01 08:05:09,925 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)

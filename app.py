@@ -113,19 +113,34 @@ class SensorDashboard:
             self.btn_version.config(text=f"v{APP_VERSION}", bootstyle=SECONDARY)
             messagebox.showerror("Update Fehler", f"Download fehlgeschlagen:\n{data}")
 
-    def start_blinking(self):
-        if self.blink_id:
+    def start_blinking(self, step=0, direction=1):
+        if self.blink_id and step == 0:
             self.root.after_cancel(self.blink_id)
-        self.blink_state = not self.blink_state
-        style = SUCCESS if self.blink_state else SECONDARY
-        self.btn_version.config(bootstyle=style)
-        self.blink_id = self.root.after(1200, self.start_blinking) 
+            
+        if not hasattr(self, 'custom_style'):
+            self.custom_style = tb.Style()
         
+        # Farbverlauf von dunklem zu leuchtendem Grün
+        greens = ["#1b4f26", "#236b33", "#2a8740", "#32a34d", "#39bf5a", "#45d468", "#59e379"]
+        
+        if step >= len(greens) - 1:
+            direction = -1
+        elif step <= 0:
+            direction = 1
+            
+        current_color = greens[step]
+        # Custom Style anwenden (überschreibt temporär das Standard-Theme)
+        self.custom_style.configure("Pulsing.TButton", background=current_color, bordercolor=current_color, foreground="white")
+        self.btn_version.config(style="Pulsing.TButton")
+        
+        self.blink_id = self.root.after(120, lambda: self.start_blinking(step + direction, direction))
+
     def stop_blinking(self):
         if self.blink_id:
             self.root.after_cancel(self.blink_id)
             self.blink_id = None
-            self.btn_version.config(bootstyle=SECONDARY)
+        # Style zurücksetzen und originalen Bootstyle wiederherstellen
+        self.btn_version.config(style="TButton", bootstyle=SECONDARY)
 
     def handle_version_click(self):
         # Wenn geklickt wird und ein fertiges Update wartet -> Installieren
@@ -452,13 +467,28 @@ class SensorDashboard:
                 with open(filepath, 'r', encoding='utf-8') as f:
                     lines = f.readlines()
                     
-                notes_lines = [line[1:].strip() if line.startswith('# ') else line.lstrip('#').strip() for line in lines if line.startswith('#')]
+                notes_lines = []
+                for line in lines:
+                    if line.startswith('#'):
+                        clean_line = line.lstrip('#').strip()
+                        # Meta-Tags für Achsen abfangen
+                        if clean_line.startswith('XMAX:'):
+                            val = clean_line.split('XMAX:')[1].strip()
+                            self.ent_xmax.delete(0, tk.END)
+                            self.ent_xmax.insert(0, val)
+                        elif clean_line.startswith('YMAX:'):
+                            val = clean_line.split('YMAX:')[1].strip()
+                            self.ent_ymax.delete(0, tk.END)
+                            self.ent_ymax.insert(0, val)
+                        else:
+                            # Echte Notizen behalten (entfernt führendes Leerzeichen falls vorhanden)
+                            notes_lines.append(clean_line[1:] if clean_line.startswith(' ') else clean_line)
                 
-                # Wenn wir eine einzelne Datei laden (nicht anhängen) und sie Notizen hat, füge sie ins Textfeld ein
+                # Nur die echten Notizen anzeigen
                 if not append and notes_lines:
                     self.text_notes.insert(tk.END, '\n'.join(notes_lines))
                     
-                skip = len(notes_lines)
+                skip = len([line for line in lines if line.startswith('#')])
                         
                 df = pd.read_csv(filepath, sep=';', skiprows=skip)
                 if 'Index' in df.columns:
@@ -472,8 +502,7 @@ class SensorDashboard:
                     else: df['Sekunden'] = (df['Zeitstempel'].astype(float) - 1) / 1000.0
 
                 self.datasets.append((os.path.basename(filepath), df))
-                self.update_plot()
-                self.reset_view()
+                self.update_plot(preserve_limits=False)
             except Exception as e:
                 self.logger.error(f"Fehler beim Laden: {e}")
                 messagebox.showerror("Ladefehler", f"Fehler: {e}")
@@ -647,8 +676,13 @@ class SensorDashboard:
             # 2. Alte Notizen (alles mit # am Anfang) entfernen, um nur die reinen Daten zu behalten
             data_lines = [line for line in lines if not line.startswith('#')]
             
-            # 3. Datei neu schreiben: Erst die aktuellen Notizen aus dem Textfeld, dann die Daten
+            # 3. Datei neu schreiben: Meta-Daten, Notizen, dann Rohdaten
             with open(self.current_filepath, 'w', encoding='utf-8') as f:
+                # Achsenwerte speichern
+                f.write(f"# XMAX:{self.ent_xmax.get().strip()}\n")
+                f.write(f"# YMAX:{self.ent_ymax.get().strip()}\n")
+                
+                # Sichtbare Notizen speichern
                 if note:
                     for line in note.split('\n'):
                         f.write(f"# {line}\n")

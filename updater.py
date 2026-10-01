@@ -15,8 +15,17 @@ class AppUpdater:
         self.app_callback = app_callback
         self.latest_version = None
         self.download_url = None
-        self.downloaded_version = None
+        
+        # Temp-Pfade für EXE und Versions-Tracking
         self.exe_path = os.path.join(tempfile.gettempdir(), "Drucksensor_Update.exe")
+        self.version_file = os.path.join(tempfile.gettempdir(), "Drucksensor_Update_Version.txt")
+        
+        # Lese gespeicherte Version, falls vorhanden
+        self.downloaded_version = None
+        if os.path.exists(self.version_file) and os.path.exists(self.exe_path):
+            with open(self.version_file, "r") as vf:
+                self.downloaded_version = vf.read().strip()
+                
         self.is_downloading = False
 
     def check_for_updates(self, manual=False):
@@ -32,7 +41,7 @@ class AppUpdater:
                         self.latest_version = latest_version
                         self.download_url = download_url
                         
-                        # Prüfen, ob wir genau dieses (oder ein neueres) Update schon geladen haben
+                        # Prüfen, ob exakt dieses Update schon auf der Festplatte liegt
                         if self.downloaded_version == latest_version and os.path.exists(self.exe_path):
                             self.root.after(0, lambda: self.app_callback("READY", latest_version))
                         else:
@@ -70,6 +79,10 @@ class AppUpdater:
                                 progress = int(100 * dl / total_length)
                                 self.root.after(0, lambda p=progress: self.app_callback("DOWNLOADING", p))
                 
+                # Version in Textdatei sichern
+                with open(self.version_file, "w") as vf:
+                    vf.write(self.latest_version)
+                    
                 self.downloaded_version = self.latest_version
                 self.is_downloading = False
                 self.root.after(0, lambda: self.app_callback("READY", self.latest_version))
