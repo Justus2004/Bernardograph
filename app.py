@@ -56,6 +56,7 @@ class SensorDashboard:
         self.colors = ['#D32F2F', '#1976D2', '#388E3C', '#FBC02D', '#8E24AA', '#E64A19', '#0097A7']
         
         self.current_filepath = None
+        self.loaded_note = ""
         self.press = None
         self.annot = None
         self.current_key = None 
@@ -79,12 +80,32 @@ class SensorDashboard:
         self.root.after(500, self.start_connection)
         self.root.after(2000, self.updater.check_for_updates) 
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+        
+    def check_unsaved_notes(self):
+            """Prüft, ob Notizen geändert wurden und bietet Speichern an. Gibt False zurück, wenn der User abbricht."""
+            if not self.current_filepath or not os.path.exists(self.current_filepath):
+                return True
 
+            current_note = self.text_notes.get("1.0", tk.END).strip()
+            if current_note != self.loaded_note:
+                ans = messagebox.askyesnocancel(
+                    "Ungespeicherte Notizen",
+                    "Du hast die Notizen oder Einstellungen verändert.\n\nMöchtest du die Änderungen in der Datei speichern?"
+                )
+                if ans is True: # Ja -> Speichern
+                    return self.export_notes()
+                elif ans is False: # Nein -> Ignorieren und fortfahren
+                    return True
+                else: # Abbrechen -> Aktion stoppen
+                    return False
+            return True
+    
     def setup_logging(self):
         self.logger = logging.getLogger("SensorApp")
         self.logger.setLevel(logging.DEBUG)
         
-        fh = RotatingFileHandler("app.log", maxBytes=1024*1024, backupCount=3)
+        # FIX: encoding="utf-8" hinzufügen
+        fh = RotatingFileHandler("app.log", maxBytes=1024*1024, backupCount=3, encoding="utf-8")
         fh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(message)s'))
         self.logger.addHandler(fh)
         
@@ -152,12 +173,16 @@ class SensorDashboard:
             self.updater.check_for_updates(manual=True)
 
     def on_closing(self):
+        # Abfragen, ob ungespeicherte Änderungen existieren
+        if not self.check_unsaved_notes():
+            return  # Abbruch durch Nutzer
+            
         print("Beende Programm...")
         try:
             if self.is_measuring and self.processor: self.processor.close_session()
         except: pass 
         self.root.destroy()
-        os._exit(0) 
+        os._exit(0)
 
     def setup_ui(self):
         main_paned = tk.PanedWindow(self.root, orient=tk.HORIZONTAL, sashrelief=tk.RAISED, sashwidth=4)
@@ -443,6 +468,11 @@ class SensorDashboard:
 
     def load_csv(self, append=False, direct_path=None):
         if self.is_measuring: return messagebox.showwarning("Achtung", "Bitte warte, bis die laufende Messung abgeschlossen ist.")
+        
+        # Falls nicht angehängt wird, vor dem Laden einer neuen Datei auf ungespeicherte Änderungen prüfen
+        if not append and not self.check_unsaved_notes():
+            return
+
         filepath = direct_path or filedialog.askopenfilename(title="Messdaten auswählen", filetypes=[("CSV Dateien", "*.csv")])
         if filepath:
             if not append: 
@@ -463,7 +493,6 @@ class SensorDashboard:
             try:
                 self.logger.info(f"Lade Daten: {os.path.basename(filepath)}")
                 
-                # CSV einlesen und nach Notizen suchen
                 with open(filepath, 'r', encoding='utf-8') as f:
                     lines = f.readlines()
                     
@@ -471,7 +500,6 @@ class SensorDashboard:
                 for line in lines:
                     if line.startswith('#'):
                         clean_line = line.lstrip('#').strip()
-                        # Meta-Tags für Achsen abfangen
                         if clean_line.startswith('XMAX:'):
                             val = clean_line.split('XMAX:')[1].strip()
                             self.ent_xmax.delete(0, tk.END)
@@ -481,15 +509,16 @@ class SensorDashboard:
                             self.ent_ymax.delete(0, tk.END)
                             self.ent_ymax.insert(0, val)
                         else:
-                            # Echte Notizen behalten (entfernt führendes Leerzeichen falls vorhanden)
                             notes_lines.append(clean_line[1:] if clean_line.startswith(' ') else clean_line)
                 
-                # Nur die echten Notizen anzeigen
-                if not append and notes_lines:
-                    self.text_notes.insert(tk.END, '\n'.join(notes_lines))
-                    
+                if not append:
+                    full_note = '\n'.join(notes_lines)
+                    if notes_lines:
+                        self.text_notes.insert(tk.END, full_note)
+                    self.loaded_note = full_note.strip() # Ursprungszustand speichern
+
                 skip = len([line for line in lines if line.startswith('#')])
-                        
+                                        
                 df = pd.read_csv(filepath, sep=';', skiprows=skip)
                 if 'Index' in df.columns:
                     df['Sekunden'] = (df['Index'] - 1) / 1000.0
@@ -664,36 +693,36 @@ class SensorDashboard:
 
     def export_notes(self):
         if not self.current_filepath or not os.path.exists(self.current_filepath):
-            return messagebox.showwarning("Fehler", "Es ist keine Messung geladen, zu der Notizen gespeichert werden könnten.")
+            messagebox.showwarning("Fehler", "Es ist keine Messung geladen, zu der Notizen gespeichert werden könnten.")
+            return False
             
         note = self.text_notes.get("1.0", tk.END).strip()
         
         try:
-            # 1. Alte Datei komplett einlesen
             with open(self.current_filepath, 'r', encoding='utf-8') as f:
                 lines = f.readlines()
             
-            # 2. Alte Notizen (alles mit # am Anfang) entfernen, um nur die reinen Daten zu behalten
             data_lines = [line for line in lines if not line.startswith('#')]
             
-            # 3. Datei neu schreiben: Meta-Daten, Notizen, dann Rohdaten
             with open(self.current_filepath, 'w', encoding='utf-8') as f:
-                # Achsenwerte speichern
+                # Aktuelle Achsenskalierung (Y-Max & X-Max) mitspeichern
                 f.write(f"# XMAX:{self.ent_xmax.get().strip()}\n")
                 f.write(f"# YMAX:{self.ent_ymax.get().strip()}\n")
                 
-                # Sichtbare Notizen speichern
                 if note:
                     for line in note.split('\n'):
                         f.write(f"# {line}\n")
                 f.writelines(data_lines)
                 
-            self.logger.info(f"Notizen in CSV aktualisiert: {self.current_filepath}")
-            messagebox.showinfo("Erfolg", f"Notizen wurden direkt in der CSV-Datei gespeichert!\n({os.path.basename(self.current_filepath)})")
+            self.loaded_note = note # Status als gespeichert markieren
+            self.logger.info(f"Notizen & Skalierung in CSV aktualisiert: {self.current_filepath}")
+            messagebox.showinfo("Erfolg", f"Notizen und Achsenskalierung wurden in der CSV-Datei gespeichert!\n({os.path.basename(self.current_filepath)})")
+            return True
             
         except Exception as e:
             self.logger.error(f"Fehler beim Speichern der Notizen in die CSV: {e}")
             messagebox.showerror("Fehler", f"Konnte Notizen nicht in CSV speichern:\n{e}")
+            return False
 
     def export_csv(self):
         if not self.datasets: 

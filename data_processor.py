@@ -40,10 +40,18 @@ class DataProcessor:
         mbar_chunk = [] 
 
         for raw_adc in raw_values:
-            # Direktes Auslesen/Verarbeiten der bereits berechneten Werte
-            mbar = float(raw_adc) # Bzw. Anpassung falls der Arduino Millibar direkt im Stream schickt
-            if mbar < 0: mbar = 0.0
-            if mbar > 100: mbar = 100.0
+            # Exakte Formel wie auf dem Arduino:
+            # 1. ADC-Wert in Spannung umrechnen (14 Bit = 0 bis 16383)
+            spannung = raw_adc * (5.0 / 16383.0)
+            
+            # 2. Spannung in Druck (mbar) umrechnen
+            mbar = 100.0 - ((spannung / 4.717) * 100.0)
+
+            # 3. Grenzbereich sauber abfangen
+            if mbar < 0.0:
+                mbar = 0.0
+            elif mbar > 100.0:
+                mbar = 100.0
 
             sum_mbar += mbar
             mbar_round = round(mbar, 2)

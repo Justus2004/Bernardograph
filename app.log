@@ -1377,3 +1377,39 @@ Tipp: Halte 'x' oder 'y' beim Scrollen f�r gezielten Zoom!
 2026-10-01 08:22:33,236 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
 2026-10-01 08:22:38,252 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
 2026-10-01 08:22:43,254 - ERROR - SensorApp.Bluetooth - Bluetooth-Adapter Fehler: ('Bluetooth radio is not powered on. Turn on Bluetooth and try again.', <BleakBluetoothNotAvailableReason.POWERED_OFF: 3>)
+2026-10-05 14:42:22,149 - INFO - SensorApp - Bereit. Starte automatische Bluetooth-Verbindung...
+Tipp: Halte 'x' oder 'y' beim Scrollen f�r gezielten Zoom!
+2026-10-05 14:42:22,661 - INFO - SensorApp.Bluetooth - Automatischer Verbindungsmodus gestartet.
+2026-10-05 14:42:35,991 - INFO - SensorApp.Bluetooth - Gefunden: 90:70:69:2C:4C:11. Verbinde...
+2026-10-05 14:42:43,331 - INFO - SensorApp.Bluetooth - Arduino: INFO:Zeit-Messung ge
+2026-10-05 14:42:43,332 - INFO - SensorApp.DataProcessor - >>> Messung gestartet. Datei: messungen\messung_20261005_144243_d254s.csv
+2026-10-05 14:43:28,271 - INFO - SensorApp.DataProcessor - >>> Messung beendet und CSV sicher gespeichert.
+2026-10-05 14:43:28,271 - INFO - SensorApp.Bluetooth - Arduino: WARN:Zeit-Messung vo
+2026-10-05 14:43:28,335 - INFO - SensorApp - Lade Daten: messung_20261005_144243_d254s.csv
+2026-10-05 14:44:40,239 - INFO - SensorApp - Bereit. Starte automatische Bluetooth-Verbindung...
+Tipp: Halte 'x' oder 'y' beim Scrollen für gezielten Zoom!
+2026-10-05 14:44:40,757 - INFO - SensorApp.Bluetooth - Automatischer Verbindungsmodus gestartet.
+2026-10-05 14:45:01,876 - INFO - SensorApp.Bluetooth - Gefunden: 90:70:69:2C:4C:11. Verbinde...
+2026-10-05 14:45:04,392 - INFO - SensorApp.Bluetooth - 🟢 Verbunden! Warte auf Tasterdruck...
+2026-10-05 14:45:07,631 - INFO - SensorApp.Bluetooth - Arduino: INFO:Zeit-Messung ge
+2026-10-05 14:45:07,632 - INFO - SensorApp.DataProcessor - >>> Messung gestartet. Datei: messungen\messung_20261005_144507_d254s.csv
+2026-10-05 14:45:32,532 - INFO - SensorApp.DataProcessor - >>> Messung beendet und CSV sicher gespeichert.
+2026-10-05 14:45:32,533 - INFO - SensorApp.Bluetooth - Arduino: WARN:Zeit-Messung vo
+2026-10-05 14:45:32,568 - INFO - SensorApp - Lade Daten: messung_20261005_144507_d254s.csv
+2026-10-05 14:45:39,876 - INFO - SensorApp - Notizen in CSV aktualisiert: messungen\messung_20261005_144507_d254s.csv
+2026-10-05 14:46:29,889 - INFO - SensorApp - Lade Daten: messung_20261005_144507_d254s.csv
+2026-10-05 14:46:39,827 - INFO - SensorApp - Lade Daten: messung_20261005_144243_d254s.csv
+2026-10-05 14:46:44,765 - INFO - SensorApp - Lade Daten: messung_20261005_144507_d254s.csv
+2026-10-05 14:51:16,592 - INFO - SensorApp - Bereit. Starte automatische Bluetooth-Verbindung...
+Tipp: Halte 'x' oder 'y' beim Scrollen für gezielten Zoom!
+2026-10-05 14:51:17,106 - INFO - SensorApp.Bluetooth - Automatischer Verbindungsmodus gestartet.
+2026-10-05 14:51:38,308 - INFO - SensorApp.Bluetooth - Gefunden: 90:70:69:2C:4C:11. Verbinde...
+2026-10-05 14:51:40,452 - INFO - SensorApp.Bluetooth - 🟢 Verbunden! Warte auf Tasterdruck...
+2026-10-05 14:52:07,751 - INFO - SensorApp.Bluetooth - Arduino: INFO:Zeit-Messung ge
+2026-10-05 14:52:07,753 - INFO - SensorApp.DataProcessor - >>> Messung gestartet. Datei: messungen\messung_20261005_145207_d254s.csv
+2026-10-05 14:52:28,271 - INFO - SensorApp.DataProcessor - >>> Messung beendet und CSV sicher gespeichert.
+2026-10-05 14:52:28,271 - INFO - SensorApp.Bluetooth - Arduino: WARN:Zeit-Messung vo
+2026-10-05 14:52:28,295 - INFO - SensorApp - Lade Daten: messung_20261005_145207_d254s.csv
+2026-10-05 14:52:47,121 - INFO - SensorApp - Notizen & Skalierung in CSV aktualisiert: messungen\messung_20261005_145207_d254s.csv
+2026-10-05 14:52:51,056 - INFO - SensorApp - Lade Daten: messung_20261005_144507_d254s.csv
+2026-10-05 14:52:55,004 - INFO - SensorApp - Lade Daten: messung_20261005_145207_d254s.csv
