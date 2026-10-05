@@ -32,7 +32,7 @@ class AppUpdater:
         def check():
             try:
                 url = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
-                response = requests.get(url, timeout=3).json()
+                response = requests.get(url, timeout=3, verify=False).json()
                 latest_version = response.get("tag_name", "").replace("v", "")
                 
                 if latest_version and latest_version > APP_VERSION:
@@ -62,7 +62,7 @@ class AppUpdater:
         
         def download_task():
             try:
-                r = requests.get(self.download_url, stream=True)
+                r = requests.get(self.download_url, stream=True, verify=False)
                 total_length = r.headers.get('content-length')
                 
                 with open(self.exe_path, 'wb') as f:
