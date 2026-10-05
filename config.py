@@ -5,8 +5,8 @@ CMD_UUID = "00002a6f-0000-1000-8000-00805f9b34fb"
 OUTPUT_DIR = "messungen"
 
 # App Konfiguration
-APP_VERSION = "1.4.2"
+APP_VERSION = "1.5.0"
 GITHUB_REPO = "Justus2004/Bernardograph"
 
 # Performance
-MAX_LIVE_POINTS = 5000  # Für das rollierende Fenster
+MAX_LIVE_POINTS = 2000  # Für das rollierende Fenster

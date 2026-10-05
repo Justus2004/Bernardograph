@@ -53,6 +53,8 @@ class SensorDashboard:
         self.plot_events = PlotEventManager(self)
         
         self.datasets = [] 
+        self.plot_dfs = []         # NEU: Speichert vorberechnete (geglättete) Daten für den Hover
+        self.needs_redraw = False  # NEU: Steuert das performante Neuzeichnen
         self.colors = ['#D32F2F', '#1976D2', '#388E3C', '#FBC02D', '#8E24AA', '#E64A19', '#0097A7']
         
         self.current_filepath = None
@@ -388,7 +390,9 @@ class SensorDashboard:
         self.update_plot(preserve_limits=False)
 
     def process_queue(self):
-        while not self.msg_queue.empty():
+        count = 0
+        # Blockiert das UI nicht mehr: Max 50 Nachrichten pro Durchlauf abarbeiten
+        while not self.msg_queue.empty() and count < 50:
             msg_type, data = self.msg_queue.get()
             if msg_type == "LOG":
                 self.log_text.insert(tk.END, data + "\n")
@@ -402,6 +406,7 @@ class SensorDashboard:
             elif msg_type == "END_MEASURE":
                 self.stop_live_plot()
                 self.load_csv(append=False, direct_path=data)
+            count += 1
         self.root.after(100, self.process_queue)
 
     def start_connection(self):
@@ -435,6 +440,10 @@ class SensorDashboard:
         line_color = '#0078D7'
         self.live_line, = self.ax.plot([], [], color=line_color, linewidth=1.5)
         self.canvas.draw_idle()
+        
+        self.needs_redraw = False
+        self.render_live_plot() # Starte die entkoppelte Zeichen-Schleife
+        
         if seconds > 0: self.update_countdown()
 
     def update_countdown(self):
@@ -453,14 +462,29 @@ class SensorDashboard:
         if len(self.live_x) > MAX_LIVE_POINTS:
             self.live_x = self.live_x[-MAX_LIVE_POINTS:]
             self.live_y = self.live_y[-MAX_LIVE_POINTS:]
-            window_width = self.live_x[-1] - self.live_x[0]
-            self.ax.set_xlim(self.live_x[0], self.live_x[-1] + (window_width * 0.05))
-        elif self.countdown == 0 and self.live_x[-1] > self.ax.get_xlim()[1]:
-            current_max = self.ax.get_xlim()[1]
-            self.ax.set_xlim(current_max - 5, current_max + 5)
+            
+        # Nicht sofort zeichnen, sondern nur das Signal dafür geben!
         
-        self.live_line.set_data(self.live_x, self.live_y)
-        self.canvas.draw_idle()
+        self.needs_redraw = True
+    def render_live_plot(self):
+        """Entkoppelter Renderer: Zeichnet max. ~20 Mal pro Sekunde."""
+        if not self.is_measuring: return
+        
+        if self.needs_redraw and self.live_x:
+            window_width = self.live_x[-1] - self.live_x[0] if self.live_x else 0
+            
+            # X-Achse verschieben
+            if len(self.live_x) >= MAX_LIVE_POINTS:
+                self.ax.set_xlim(self.live_x[0], self.live_x[-1] + (window_width * 0.05))
+            elif self.countdown == 0 and self.live_x[-1] > self.ax.get_xlim()[1]:
+                current_max = self.ax.get_xlim()[1]
+                self.ax.set_xlim(current_max - 5, current_max + 5)
+            
+            self.live_line.set_data(self.live_x, self.live_y)
+            self.canvas.draw_idle()
+            self.needs_redraw = False
+            
+        self.root.after(50, self.render_live_plot)
 
     def stop_live_plot(self):
         self.is_measuring = False
@@ -539,7 +563,6 @@ class SensorDashboard:
     def update_plot(self, preserve_limits=True):
         if not self.datasets or self.is_measuring: return
         
-        # 1. Aktuellen Zoom speichern
         old_xlim = self.ax.get_xlim() if preserve_limits else None
         old_ylim = self.ax.get_ylim() if preserve_limits else None
 
@@ -554,11 +577,15 @@ class SensorDashboard:
         try: ymax = float(self.ent_ymax.get().replace(',', '.'))
         except: ymax = 105
 
+        self.plot_dfs = [] # NEU: Leere den vorberechneten Cache
         max_time = 0
         for idx, (name, raw_df) in enumerate(self.datasets):
             df = raw_df.copy()
             color = self.colors[idx % len(self.colors)]
+            
+            # Glättung nur EINMAL berechnen
             if window > 1: df['Druck_mbar'] = df['Druck_mbar'].rolling(window=window, min_periods=1, center=True).mean()
+            self.plot_dfs.append(df) # Geglättetes DF ablegen
 
             self.ax.plot(df['Sekunden'], df['Druck_mbar'], color=color, linewidth=1.5, label=name)
             if df['Sekunden'].iloc[-1] > max_time: max_time = df['Sekunden'].iloc[-1]

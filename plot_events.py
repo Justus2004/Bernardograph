@@ -86,7 +86,6 @@ class PlotEventManager:
             nxmin, nxmax = xl[0]-dx, xl[1]-dx
             nymin, nymax = yl[0]-dy, yl[1]-dy
             
-            # Blockiere Ziehen aus dem Rahmen
             if nxmin < 0: nxmax -= nxmin; nxmin = 0
             if nxmax > xmax_limit:
                 nxmin -= (nxmax - xmax_limit)
@@ -104,10 +103,9 @@ class PlotEventManager:
             self.app.canvas.draw_idle()
             return
         
-        if self.app.datasets and event.xdata and self.app.annot:
-            _, raw_df = self.app.datasets[-1]
-            df = raw_df.copy() 
-            if self.app.smooth_var.get() > 1: df['Druck_mbar'] = df['Druck_mbar'].rolling(window=self.app.smooth_var.get(), center=True).mean()
+        # PERFORMANTE ÄNDERUNG HIER: Greift direkt auf vorgefertigte plot_dfs zu
+        if hasattr(self.app, 'plot_dfs') and self.app.plot_dfs and event.xdata and self.app.annot:
+            df = self.app.plot_dfs[-1] # Das DataFrame ist bereits geglättet!
             row = df.loc[(df['Sekunden'] - event.xdata).abs().idxmin()]
             if abs(row['Sekunden'] - event.xdata) < ((self.app.ax.get_xlim()[1] - self.app.ax.get_xlim()[0]) * 0.05):
                 self.app.annot.xy = (row['Sekunden'], row['Druck_mbar'])
