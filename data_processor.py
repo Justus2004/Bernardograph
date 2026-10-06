@@ -3,11 +3,11 @@ import os
 from datetime import datetime
 import struct
 import logging
+import json
 from config import OUTPUT_DIR
 
 class DataProcessor:
     def __init__(self):
-        os.makedirs(OUTPUT_DIR, exist_ok=True)
         self.logger = logging.getLogger("SensorApp.DataProcessor")
         self.file = None
         self.csv_writer = None
@@ -15,14 +15,36 @@ class DataProcessor:
         self.received_chunks = 0
         self.current_filepath = None
         self.current_index = 1
+        self.settings_file = "settings.json"  # <--- NEU
+
+    def get_save_directory(self):
+        """Liest den Speicherort aus, oder fällt auf den Standard zurück."""
+        if os.path.exists(self.settings_file):
+            try:
+                with open(self.settings_file, "r") as f:
+                    data = json.load(f)
+                    custom_dir = data.get("save_dir", "")
+                    
+                    # Prüfen, ob der Ordner existiert (falls z.B. ein Stick abgezogen wurde)
+                    if custom_dir and os.path.isdir(custom_dir):
+                        return custom_dir
+            except Exception as e:
+                self.logger.warning(f"Fehler beim Lesen der Speichereinstellungen: {e}")
+                
+        # FALLBACK: Wenn nichts eingestellt ist oder der Ordner fehlt
+        os.makedirs(OUTPUT_DIR, exist_ok=True)
+        return OUTPUT_DIR
 
     def start_session(self, seconds: int):
         self.expected_chunks = seconds * 10 if seconds > 0 else float('inf')
         self.received_chunks = 0
         self.current_index = 1
         
+        # Dynamischen Speicherort ermitteln
+        save_dir = self.get_save_directory()
+        
         dateistempel = datetime.now().strftime("%Y%m%d_%H%M%S")
-        dateiname = os.path.join(OUTPUT_DIR, f"messung_{dateistempel}_d{seconds}s.csv")
+        dateiname = os.path.join(save_dir, f"messung_{dateistempel}_d{seconds}s.csv")
         self.current_filepath = dateiname
         
         self.file = open(dateiname, mode='w', newline='')
@@ -40,14 +62,9 @@ class DataProcessor:
         mbar_chunk = [] 
 
         for raw_adc in raw_values:
-            # Exakte Formel wie auf dem Arduino:
-            # 1. ADC-Wert in Spannung umrechnen (14 Bit = 0 bis 16383)
             spannung = raw_adc * (5.0 / 16383.0)
-            
-            # 2. Spannung in Druck (mbar) umrechnen
             mbar = 100.0 - ((spannung / 4.717) * 100.0)
 
-            # 3. Grenzbereich sauber abfangen
             if mbar < 0.0:
                 mbar = 0.0
             elif mbar > 100.0:

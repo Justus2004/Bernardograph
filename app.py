@@ -1,4 +1,5 @@
 import tkinter as tk
+import json
 import ttkbootstrap as tb
 from ttkbootstrap.constants import *
 from tkinter.scrolledtext import ScrolledText
@@ -101,7 +102,33 @@ class SensorDashboard:
                 else: # Abbrechen -> Aktion stoppen
                     return False
             return True
-    
+
+    def change_save_directory(self):
+        settings_file = "settings.json"
+        current_dir = ""
+        
+        # Vorherigen Pfad laden, falls vorhanden
+        if os.path.exists(settings_file):
+            try:
+                with open(settings_file, "r") as f:
+                    current_dir = json.load(f).get("save_dir", "")
+            except: pass
+            
+        # Dialog zur Ordnerauswahl öffnen
+        new_dir = filedialog.askdirectory(
+            title="Speicherort für Messungen auswählen", 
+            initialdir=current_dir if os.path.isdir(current_dir) else None
+        )
+        
+        if new_dir:
+            try:
+                # Neuen Pfad in JSON-Datei speichern
+                with open(settings_file, "w") as f:
+                    json.dump({"save_dir": new_dir}, f)
+                messagebox.showinfo("Speicherort", f"Der Speicherort für neue Messungen wurde geändert auf:\n\n{new_dir}")
+            except Exception as e:
+                messagebox.showerror("Fehler", f"Fehler beim Speichern der Einstellung:\n{e}")
+
     def setup_logging(self):
         self.logger = logging.getLogger("SensorApp")
         self.logger.setLevel(logging.DEBUG)
@@ -206,6 +233,9 @@ class SensorDashboard:
         self.btn_version = tb.Button(top_frame, text=f"v{APP_VERSION}", bootstyle=SECONDARY, command=self.handle_version_click)
         self.btn_version.pack(side=LEFT, padx=10)
 
+        self.btn_settings = tb.Button(top_frame, text="⚙️ Speicherort", command=self.change_save_directory, bootstyle=(SECONDARY, OUTLINE))
+        self.btn_settings.pack(side=LEFT, padx=3)
+
         self.btn_load = tb.Button(top_frame, text="CSV laden", command=lambda: self.load_csv(append=False), bootstyle=SUCCESS)
         self.btn_load.pack(side=LEFT, padx=3)
 
@@ -246,6 +276,7 @@ class SensorDashboard:
         self.canvas.mpl_connect('motion_notify_event', self.plot_events.on_motion)
         self.canvas.mpl_connect('key_press_event', self.plot_events.on_key_press)
         self.canvas.mpl_connect('key_release_event', self.plot_events.on_key_release)
+        self.canvas.get_tk_widget().bind('<Enter>', lambda e: self.canvas.get_tk_widget().focus_set())
         
         # 3. LOGBUCH UNTEN
         log_frame = tb.Frame(left_frame)
@@ -464,7 +495,7 @@ class SensorDashboard:
             self.live_y = self.live_y[-MAX_LIVE_POINTS:]
             
         # Nicht sofort zeichnen, sondern nur das Signal dafür geben!
-        
+
         self.needs_redraw = True
     def render_live_plot(self):
         """Entkoppelter Renderer: Zeichnet max. ~20 Mal pro Sekunde."""

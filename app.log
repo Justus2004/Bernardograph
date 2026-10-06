@@ -1413,3 +1413,26 @@ Tipp: Halte 'x' oder 'y' beim Scrollen für gezielten Zoom!
 2026-10-05 14:52:47,121 - INFO - SensorApp - Notizen & Skalierung in CSV aktualisiert: messungen\messung_20261005_145207_d254s.csv
 2026-10-05 14:52:51,056 - INFO - SensorApp - Lade Daten: messung_20261005_144507_d254s.csv
 2026-10-05 14:52:55,004 - INFO - SensorApp - Lade Daten: messung_20261005_145207_d254s.csv
+2026-10-05 16:50:13,177 - INFO - SensorApp - Bereit. Starte automatische Bluetooth-Verbindung...
+Tipp: Halte 'x' oder 'y' beim Scrollen für gezielten Zoom!
+2026-10-05 16:50:19,256 - INFO - SensorApp - Bereit. Starte automatische Bluetooth-Verbindung...
+Tipp: Halte 'x' oder 'y' beim Scrollen für gezielten Zoom!
+2026-10-05 16:50:19,765 - INFO - SensorApp.Bluetooth - Automatischer Verbindungsmodus gestartet.
+2026-10-05 16:50:22,468 - INFO - SensorApp - Lade Daten: messung_20261005_144243_d254s.csv
+2026-10-06 07:36:35,583 - INFO - SensorApp - Bereit. Starte automatische Bluetooth-Verbindung...
+Tipp: Halte 'x' oder 'y' beim Scrollen für gezielten Zoom!
+2026-10-06 07:36:36,105 - INFO - SensorApp.Bluetooth - Automatischer Verbindungsmodus gestartet.
+2026-10-06 07:37:18,654 - INFO - SensorApp - Lade Daten: messung_20261005_144243_d254s.csv
+2026-10-06 07:39:22,283 - INFO - SensorApp.Bluetooth - Gefunden: 90:70:69:2C:4C:11. Verbinde...
+2026-10-06 07:39:25,309 - INFO - SensorApp.Bluetooth - 🟢 Verbunden! Warte auf Tasterdruck...
+2026-10-06 07:39:37,189 - INFO - SensorApp.Bluetooth - Arduino: INFO:Zeit-Messung ge
+2026-10-06 07:39:37,191 - INFO - SensorApp.DataProcessor - >>> Messung gestartet. Datei: C:/Users/K1019948/Desktop\messung_20261006_073937_d254s.csv
+2026-10-06 07:40:29,327 - INFO - SensorApp.DataProcessor - >>> Messung beendet und CSV sicher gespeichert.
+2026-10-06 07:40:29,327 - INFO - SensorApp.Bluetooth - Arduino: WARN:Zeit-Messung vo
+2026-10-06 07:40:29,392 - INFO - SensorApp - Lade Daten: messung_20261006_073937_d254s.csv
+2026-10-06 07:42:45,921 - INFO - SensorApp - Bereit. Starte automatische Bluetooth-Verbindung...
+Tipp: Halte 'x' oder 'y' beim Scrollen für gezielten Zoom!
+2026-10-06 07:42:46,433 - INFO - SensorApp.Bluetooth - Automatischer Verbindungsmodus gestartet.
+2026-10-06 07:42:52,864 - INFO - SensorApp - Lade Daten: messung_20261005_144507_d254s.csv
+2026-10-06 07:43:07,612 - INFO - SensorApp.Bluetooth - Gefunden: 90:70:69:2C:4C:11. Verbinde...
+2026-10-06 07:43:10,249 - INFO - SensorApp.Bluetooth - 🟢 Verbunden! Warte auf Tasterdruck...
